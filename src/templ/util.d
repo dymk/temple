@@ -1,3 +1,5 @@
+module templ.util;
+
 import
   std.range,
   std.algorithm;

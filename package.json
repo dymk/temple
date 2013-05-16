@@ -8,16 +8,6 @@
 	"dependencies": {
 	},
 	"targetType": "sourceLibrary",
-	"configurations": [
-		{
-			"targetType": "executable",
-			"name": "unittest",
-			"dflags": ["-unittest"],
-			"postBuildCommands": ["templ.d"]
-		},
-		{
-			"name": "release",
-			"dflags": ["-release", "-O", "-inline"]
-		}
-	]
+	"targetPath": "build",
+	"targetName": "templd"
 }
