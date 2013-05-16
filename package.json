@@ -7,7 +7,6 @@
 	],
 	"dependencies": {
 	},
-	"targetType": "sourceLibrary",
 	"targetPath": "build",
 	"targetName": "templd"
 }
