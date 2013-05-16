@@ -1,12 +1,9 @@
 {
-	"name": "templ",
+	"name": "templ-d",
 	"description": "A Compile Time Parser and Generator for Embedded D Templates",
 	"copyright": "Copyright © 2013, Dylan Knutson",
 	"authors": [
 		"Dylan Knutson"
 	],
-	"dependencies": {
-	},
 	"targetPath": "build",
-	"targetName": "templd"
 }
