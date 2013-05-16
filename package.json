@@ -7,5 +7,17 @@
 	],
 	"dependencies": {
 	},
-	"targetType": "targetType"
+	"targetType": "sourceLibrary",
+	"configurations": [
+		{
+			"targetType": "executable",
+			"name": "unittest",
+			"dflags": ["-main", "-unittest"],
+			"postBuildCommands": ["templ.d"]
+		},
+		{
+			"name": "release",
+			"dflags": ["-release", "-O", "-inline"]
+		}
+	]
 }
