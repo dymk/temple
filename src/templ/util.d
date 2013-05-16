@@ -21,13 +21,13 @@ ptrdiff_t countUntilAny(Char1, Char2)(const(Char1)[] s, const(Char2)[][] subs) {
 }
 
 unittest {
-	auto a = "1, 2, 3, 4";
-	assert(a.countUntilAny(["1", "2"]) == 0);
-	assert(a.countUntilAny(["2", "1"]) == 0);
-	assert(a.countUntilAny(["4", "2"]) == 3);
+	enum a = "1, 2, 3, 4";
+	static assert(a.countUntilAny(["1", "2"]) == 0);
+	static assert(a.countUntilAny(["2", "1"]) == 0);
+	static assert(a.countUntilAny(["4", "2"]) == 3);
 }
 unittest {
-	auto a = "1, 2, 3, 4";
-	assert(a.countUntilAny(["5", "1"]) == 0);
-	assert(a.countUntilAny(["5", "6"]) == -1);
+	enum a = "1, 2, 3, 4";
+	static assert(a.countUntilAny(["5", "1"]) == 0);
+	static assert(a.countUntilAny(["5", "6"]) == -1);
 }
