@@ -1,5 +1,5 @@
 {
-	"name": "templ.d",
+	"name": "templ",
 	"description": "A Compile Time Parser and Generator for Embedded D Templates",
 	"copyright": "Copyright © 2013, Dylan Knutson",
 	"authors": [
