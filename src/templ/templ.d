@@ -3,7 +3,7 @@ import templ.util;
 import std.array;
 import std.algorithm;
 
-string Templ(Context = void)(string template_string) {
+string gen_templ_func_string(Context)(string template_string) {
 	enum OPEN_DELIM = "<%";
 	enum OPEN_DELIM_STR = "<%=";
 	enum CLOSE_DELIM = "%>";
@@ -33,7 +33,7 @@ string Templ(Context = void)(string template_string) {
 		return d_code;
 	}+/
 
-	const bool context_given = !is(Context == void);
+	enum context_given = !is(Context == void);
 	static if(!context_given) {
 		push_line("() {");
 	} else {
@@ -102,41 +102,63 @@ string Templ(Context = void)(string template_string) {
 	push_line("return __buff.data();");
 	outdent();
 	push_line("}");
+
 	return function_body;
+}
+
+/**
+* Call like 
+* 
+* ----
+* mixin Templ!(Context, string templ_string)
+* ----
+* or
+* ----
+* Templ!(string templ_string)
+* ----
+* where Context is an arbitrary context type 
+*/
+
+template Templ(string template_string) {
+	enum Templ = mixin(gen_templ_func_string!void(template_string));
+}
+
+template Templ(Context, string template_string) {
+	enum Templ = gen_templ_func_string!Context(template_string);
 }
 
 unittest {
 	//Test delimer parsing
-	const render = mixin(Templ("<% if(true) { %>foo<% } %>"));
+	const render = Templ!("<% if(true) { %>foo<% } %>");
 	static assert(render() == "foo");
 }
 unittest {
 	//Test to!string of eval delimers
-	const render = mixin(Templ(`<%= "foo" %>`));
+	const render = Templ!(`<%= "foo" %>`);
 	static assert(render() == "foo");
 }
 unittest {
 	//Test raw text with no delimers
-	const render = mixin(Templ(`foo`));
+	const render = Templ!(`foo`);
 	static assert(render() == "foo");
 }
 unittest {
 	//Assert that it's invalid if no context is used
-	static assert(!__traits(compiles, mixin(Templ(`<%= test %>`))));
+	static assert(!__traits(compiles, Templ!(`<%= test %>`)));
 }
 unittest {
 	//Assert that it's invalid if invalid context fields are used
 	struct Ctx {
 		string foo;
 	}
-	static assert(!__traits(compiles, mixin(Templ(`<%= bar %>`))));
+	static assert(!__traits(compiles, Templ!(`<%= bar %>`)));
 }
 unittest {
 	//Test static context fields
 	struct Ctx {
 		static static_field = "static value";
 	}
-	const render = mixin(Templ!Ctx(`<%= static_field %>`));
+	const render = mixin(Templ!(Ctx, `<%= static_field %>`));
 	assert(render(Ctx()) == "static value");
 }
 unittest {
@@ -144,19 +166,19 @@ unittest {
 	struct Ctx {
 		auto member_field = "member value";
 	}
-	const render = mixin(Templ!Ctx(`<%= member_field %>`));
+	const render = mixin(Templ!(Ctx, `<%= member_field %>`));
 	static assert(render(Ctx()) == "member value");
 }
 unittest {
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %>foo<% } %>`;
-	const render = mixin(Templ(templ));
+	const render = Templ!templ;
 	static assert(render() == "foofoofoo");
 }
 unittest {
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %><%= i %><% } %>`;
-	const render = mixin(Templ(templ));
+	const render = Templ!templ;
 	static assert(render() == "012");
 }
 unittest {
@@ -168,6 +190,6 @@ unittest {
 		int n_foo;
 	}
 	const templ = `<% foreach(i; 0..3) { %><%= foo() %><% } %>`;
-	const render = mixin(Templ!Ctx(templ));
+	const render = mixin(Templ!(Ctx, templ));
 	assert(render(Ctx()) == "012");
 }
