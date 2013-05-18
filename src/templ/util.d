@@ -2,6 +2,9 @@ module templ.util;
 
 import
   std.range,
+  std.array,
+  std.string,
+  std.uni,
   std.algorithm;
 
 ptrdiff_t countUntilAny(Char1, Char2)(const(Char1)[] s, const(Char2)[][] subs) {
@@ -19,7 +22,6 @@ ptrdiff_t countUntilAny(Char1, Char2)(const(Char1)[] s, const(Char2)[][] subs) {
 
 	return min_index;
 }
-
 unittest {
 	enum a = "1, 2, 3, 4";
 	static assert(a.countUntilAny(["1", "2"]) == 0);
@@ -30,4 +32,60 @@ unittest {
 	enum a = "1, 2, 3, 4";
 	static assert(a.countUntilAny(["5", "1"]) == 0);
 	static assert(a.countUntilAny(["5", "6"]) == -1);
+}
+
+string escapeQuotes(string unclean) {
+	unclean = unclean.replace(`"`, `\"`);
+	unclean = unclean.replace(`'`, `\'`);
+	return unclean;
+}
+unittest {
+	static assert(escapeQuotes(`"`) == `\"`);
+	static assert(escapeQuotes(`'`) == `\'`);
+}
+
+string stripWs(string unclean) {
+	return unclean.filter!(
+		(a) { return !isWhite(a); } //Filter any WS
+	)().map!(
+		(a) { return cast(char) a; } //cast back to char
+	)().array().idup;
+}
+unittest {
+	static assert(stripWs("") == "");
+	static assert(stripWs("    \t") == "");
+	static assert(stripWs(" a s d f ") == "asdf");
+	static assert(stripWs(" a\ns\rd f ") == "asdf");
+}
+
+
+//Returns the deimer that the string starts with
+string frontDelim(string str, string[] delims) {
+	//Sort so longer delims are compared first
+	//Eg, <%= is checked before <%
+	delims.sort!((a, b) {
+		return a.length > b.length;
+	})();
+
+	foreach(delim; delims) {
+		if(str.startsWith(delim)) {
+			return delim;
+		}
+	}
+	return null;
+}
+
+unittest {
+	enum DELIMS = [
+		"<%",
+		"<%=",
+		"aa",
+		"a"
+	];
+
+	static assert("a".frontDelim(DELIMS) == "a");
+	static assert("aa".frontDelim(DELIMS) == "aa");
+	static assert("<%".frontDelim(DELIMS) == "<%");
+	static assert("<%=".frontDelim(DELIMS) == "<%=");
+	static assert("%".frontDelim(DELIMS) == null);
 }

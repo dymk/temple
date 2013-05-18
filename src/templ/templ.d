@@ -1,12 +1,29 @@
 module templ.templ;
 import templ.util;
-import std.array;
-import std.algorithm;
+import 
+  std.array,
+  std.algorithm,
+  std.typecons;
 
-string gen_templ_func_string(Context)(string template_string) {
+string gen_templ_func_string(Context)(string templ) {
+	enum OPEN_DELIM_SHORT = "%";
+	enum OPEN_DELIM_SHORT_STR = "%=";
 	enum OPEN_DELIM = "<%";
 	enum OPEN_DELIM_STR = "<%=";
+	enum CLOSE_DELIM_SHORT = "\n";
 	enum CLOSE_DELIM = "%>";
+
+	alias Tuple!(typeof(OPEN_DELIM), typeof(CLOSE_DELIM)) DelimPair;
+
+	enum DELIM_PAIRS = [
+		DelimPair(OPEN_DELIM_SHORT, CLOSE_DELIM_SHORT),
+		DelimPair(OPEN_DELIM_SHORT_STR, CLOSE_DELIM_SHORT),
+		DelimPair(OPEN_DELIM, CLOSE_DELIM),
+		DelimPair(OPEN_DELIM_STR, CLOSE_DELIM),
+	];
+
+	enum OPEN_DELIMS  = DELIM_PAIRS.map!(dp => dp[0])().array().uniq();
+	enum CLOSE_DELIMS = DELIM_PAIRS.map!(dp => dp[1])().array().uniq();
 
 	auto function_body = "";
 	auto indent_level = 0;
@@ -51,31 +68,62 @@ string gen_templ_func_string(Context)(string template_string) {
 		indent();
 	}
 
-	while(!template_string.empty) {
-		auto open = template_string.countUntilAny([OPEN_DELIM, OPEN_DELIM_STR]);
-		if(open != -1) {
-			//pragma(msg, "Found open delimer @" ~ open ~ " in '" ~ template_string ~ "': " ~ template_string[open..$]);
+	while(!templ.empty) {
+		// open delimer position
+		immutable odpos = templ.countUntilAny([
+			OPEN_DELIM_SHORT_STR,
+			OPEN_DELIM_SHORT, 
+			OPEN_DELIM_STR,
+			OPEN_DELIM
+		]);
 
-			if(template_string[0..open].length) {
-				//Append everything before the open delimer onto the string
-				push_line(`__buff.put("` ~ template_string[0..open] ~ `");`);
+		if(odpos != -1) {
+			if(templ[0..odpos].length) {
+				//Append everything before the open delimer to the buffer
+				push_line(`__buff.put("` ~ templ[0..odpos].escapeQuotes() ~ `");`);
+			}
+
+			//discard anything before open delim
+			templ = templ[odpos..$]
+
+			immutable string odelim;
+			if(templ.startsWith(OPEN_DELIM_SHORT_STR)) {
+				odelim = OPEN_DELIM_SHORT_STR;
+			} else if(templ.startsWith(OPEN_DELIM_SHORT)) {
+				odelim = OPEN_DELIM_SHORT;
+			} else if(templ.startsWith(OPEN_DELIM_STR)) {
+				odelim = OPEN_DELIM_STR;
+			} else if
+
+			//check for shorthand delims and find next newline
+			if(
+				templ.startsWith(OPEN_DELIM_SHORT) ||
+				templ.startsWith(OPEN_DELIM_SHORT_STR)
+			) {
+				auto close = templ.countUntil('\n');
+				if(close == -1) {
+					close = templ.length - 1;
+				}
+				auto inbetween_delims = templ[OPEN_DELIM_SHORT.length .. close];
+				push_line(inbetween_delims);
+
 			}
 
 			//find the next close delimer
-			auto close = template_string[open..$].countUntil(CLOSE_DELIM);
-			assert(close != -1, "Missing close delimer '" ~ CLOSE_DELIM ~ "'. (" ~ template_string ~ ")");
-			close += open; //add index position lost by slicing from 0..open
+			auto close = templ[odpos..$].countUntil(CLOSE_DELIM);
+			assert(close != -1, "Missing close delimer '" ~ CLOSE_DELIM ~ "'. (" ~ templ ~ ")");
+			close += odpos; //add index position lost by slicing from 0..odpos
 
 			string delim_type;
-			if(template_string[open..open+OPEN_DELIM_STR.length] == OPEN_DELIM_STR) {
+			if(templ[odpos..odpos+OPEN_DELIM_STR.length] == OPEN_DELIM_STR) {
 				delim_type = OPEN_DELIM_STR;
-			} else if(template_string[open..open+OPEN_DELIM.length] == OPEN_DELIM) {
+			} else if(templ[odpos..odpos+OPEN_DELIM.length] == OPEN_DELIM) {
 				delim_type = OPEN_DELIM;
 			} else {
-				assert(false, "Unknown delimer at " ~ template_string[open..open+5]);
+				assert(false, "Unknown delimer at " ~ templ[odpos..odpos+5]);
 			}
 
-			auto inbetween_delims = template_string[open+delim_type.length ..close];
+			auto inbetween_delims = templ[odpos+delim_type.length ..close];
 
 			if(delim_type == OPEN_DELIM_STR) {
 				//Was an evaluate + output string delimer
@@ -85,11 +133,11 @@ string gen_templ_func_string(Context)(string template_string) {
 				push_line(inbetween_delims);
 			}
 
-			template_string = template_string[close + CLOSE_DELIM.length .. $];
+			templ = templ[close + CLOSE_DELIM.length .. $];
 		}
 		else {
-			//no more open delimers, append rest to buffer
-			push_line(`__buff.put("` ~ template_string[0..$] ~ `");`);
+			//no more odpos delimers, append rest to buffer
+			push_line(`__buff.put("` ~ templ[0..$].escapeQuotes() ~ `");`);
 			break;
 		}
 	}
@@ -127,6 +175,9 @@ template Templ(Context, string template_string) {
 	enum Templ = gen_templ_func_string!Context(template_string);
 }
 
+version(unittest) {
+	import std.string;
+}
 unittest {
 	//Test delimer parsing
 	const render = Templ!("<% if(true) { %>foo<% } %>");
@@ -191,5 +242,35 @@ unittest {
 	}
 	const templ = `<% foreach(i; 0..3) { %><%= foo() %><% } %>`;
 	const render = mixin(Templ!(Ctx, templ));
-	assert(render(Ctx()) == "012");
+	static assert(render(Ctx()) == "012");
+}
+unittest {
+	//Test escaping of "
+	const templ = `"`;
+	const render = Templ!templ;
+	static assert(render() == `"`);
+}
+unittest {
+	//Test escaping of '
+	const templ = `'`;
+	const render = Templ!templ;
+	static assert(render() == `'`);
+}
+unittest {
+	//Test unmatched closing delimer
+	const templ = `%>`;
+	const render = Templ!templ;
+	static assert(render() == `%>`);
+}
+unittest {
+	//Test <% %> shorthand %
+	const templ = q{
+		% foreach(i; 0..3) {
+			<%= i %>
+		% }
+	}.outdent();
+	//const render = Templ!templ;
+	const render = gen_templ_func_string!void(templ);
+	pragma(msg, render);
+	//static assert(render().stripWs == `012`);
 }
