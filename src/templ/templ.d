@@ -6,24 +6,28 @@ import
   std.typecons;
 
 string gen_templ_func_string(Context)(string templ) {
-	enum OPEN_DELIM_SHORT = "%";
-	enum OPEN_DELIM_SHORT_STR = "%=";
-	enum OPEN_DELIM = "<%";
-	enum OPEN_DELIM_STR = "<%=";
-	enum CLOSE_DELIM_SHORT = "\n";
-	enum CLOSE_DELIM = "%>";
+	enum Delims : string {	
+		OpenShort    = "%",
+		OpenShortStr = "%=",
+		CloseShort   = "\n",
 
-	alias Tuple!(typeof(OPEN_DELIM), typeof(CLOSE_DELIM)) DelimPair;
+		Open         = "<%",
+		OpenStr      = "<%=",
+		Close        = "%>"
+	}
 
-	enum DELIM_PAIRS = [
-		DelimPair(OPEN_DELIM_SHORT, CLOSE_DELIM_SHORT),
-		DelimPair(OPEN_DELIM_SHORT_STR, CLOSE_DELIM_SHORT),
-		DelimPair(OPEN_DELIM, CLOSE_DELIM),
-		DelimPair(OPEN_DELIM_STR, CLOSE_DELIM),
-	];
 
-	enum OPEN_DELIMS  = DELIM_PAIRS.map!(dp => dp[0])().array().uniq();
-	enum CLOSE_DELIMS = DELIM_PAIRS.map!(dp => dp[1])().array().uniq();
+	//Delim open/close pairs
+	alias Delim[2] DelimPair;
+	enum DelimPairs : DelimPair {
+		OpenShort    = DelimPair(Delims.OpenShort   , Delims.CloseShort),
+		OpenShortStr = DelimPair(Delims.OpenShortStr, Delims.CloseShort),
+		Open         = DelimPair(Delims.Open   , Delims.Close),
+		OpenStr      = DelimPair(Delims.OpenStr, Delims.Close)
+	}
+
+	enum OPEN_DELIMS  = DelimPairs.map!(dp => dp[0])().array().uniq();
+	enum CLOSE_DELIMS = DelimPairs.map!(dp => dp[1])().array().uniq();
 
 	auto function_body = "";
 	auto indent_level = 0;
@@ -84,16 +88,8 @@ string gen_templ_func_string(Context)(string templ) {
 			}
 
 			//discard anything before open delim
-			templ = templ[odpos..$]
-
-			immutable string odelim;
-			if(templ.startsWith(OPEN_DELIM_SHORT_STR)) {
-				odelim = OPEN_DELIM_SHORT_STR;
-			} else if(templ.startsWith(OPEN_DELIM_SHORT)) {
-				odelim = OPEN_DELIM_SHORT;
-			} else if(templ.startsWith(OPEN_DELIM_STR)) {
-				odelim = OPEN_DELIM_STR;
-			} else if
+			templ = templ[odpos..$];
+			auto open_delim = templ.frontDelim(OPEN_DELIMS);
 
 			//check for shorthand delims and find next newline
 			if(
