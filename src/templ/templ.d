@@ -1,33 +1,17 @@
 module templ.templ;
-import templ.util;
-import 
+import
+  templ.util,
+  templ.delims;
+
+import
   std.array,
   std.algorithm,
+  std.conv,
+  std.traits,
+  std.exception,
   std.typecons;
 
 string gen_templ_func_string(Context)(string templ) {
-	enum Delims : string {	
-		OpenShort    = "%",
-		OpenShortStr = "%=",
-		CloseShort   = "\n",
-
-		Open         = "<%",
-		OpenStr      = "<%=",
-		Close        = "%>"
-	}
-
-
-	//Delim open/close pairs
-	alias Delim[2] DelimPair;
-	enum DelimPairs : DelimPair {
-		OpenShort    = DelimPair(Delims.OpenShort   , Delims.CloseShort),
-		OpenShortStr = DelimPair(Delims.OpenShortStr, Delims.CloseShort),
-		Open         = DelimPair(Delims.Open   , Delims.Close),
-		OpenStr      = DelimPair(Delims.OpenStr, Delims.Close)
-	}
-
-	enum OPEN_DELIMS  = DelimPairs.map!(dp => dp[0])().array().uniq();
-	enum CLOSE_DELIMS = DelimPairs.map!(dp => dp[1])().array().uniq();
 
 	auto function_body = "";
 	auto indent_level = 0;
@@ -45,7 +29,7 @@ string gen_templ_func_string(Context)(string templ) {
 	void indent() { indent_level++; }
 	void outdent() { indent_level--; }
 
-	//generates something like
+	// Generates something like
 	/+
 	(Ctx __context) {
 		alias __context.a a;
@@ -54,91 +38,82 @@ string gen_templ_func_string(Context)(string templ) {
 		return d_code;
 	}+/
 
-	enum context_given = !is(Context == void);
-	static if(!context_given) {
+	enum isContextGiven = !is(Context == void);
+	static if(!isContextGiven) {
 		push_line("() {");
 	} else {
 		enum ContextType = __traits(identifier, Context);
 		push_line("(", ContextType, " __context) {");
 	}
 	indent();
-	push_line("import std.conv;");
-	push_line("import std.array;");
-	push_line("auto __buff = appender!string();");
+	push_line(`import std.conv;`);
+	push_line(`import std.array;`);
+	push_line(`auto __buff = appender!string();`);
+	push_line(`__buff.put("");`);
 
 	//generate local bindings to context fields
-	if(context_given) {
+	if(isContextGiven) {
 		push_line("with(__context) {");
 		indent();
 	}
 
+	// Sanity check because the compiler likes to
+	// crash my poor laptop on an infinite loop.
+	int overflow = 0;
+
 	while(!templ.empty) {
-		// open delimer position
-		immutable odpos = templ.countUntilAny([
-			OPEN_DELIM_SHORT_STR,
-			OPEN_DELIM_SHORT, 
-			OPEN_DELIM_STR,
-			OPEN_DELIM
-		]);
-
-		if(odpos != -1) {
-			if(templ[0..odpos].length) {
-				//Append everything before the open delimer to the buffer
-				push_line(`__buff.put("` ~ templ[0..odpos].escapeQuotes() ~ `");`);
-			}
-
-			//discard anything before open delim
-			templ = templ[odpos..$];
-			auto open_delim = templ.frontDelim(OPEN_DELIMS);
-
-			//check for shorthand delims and find next newline
-			if(
-				templ.startsWith(OPEN_DELIM_SHORT) ||
-				templ.startsWith(OPEN_DELIM_SHORT_STR)
-			) {
-				auto close = templ.countUntil('\n');
-				if(close == -1) {
-					close = templ.length - 1;
-				}
-				auto inbetween_delims = templ[OPEN_DELIM_SHORT.length .. close];
-				push_line(inbetween_delims);
-
-			}
-
-			//find the next close delimer
-			auto close = templ[odpos..$].countUntil(CLOSE_DELIM);
-			assert(close != -1, "Missing close delimer '" ~ CLOSE_DELIM ~ "'. (" ~ templ ~ ")");
-			close += odpos; //add index position lost by slicing from 0..odpos
-
-			string delim_type;
-			if(templ[odpos..odpos+OPEN_DELIM_STR.length] == OPEN_DELIM_STR) {
-				delim_type = OPEN_DELIM_STR;
-			} else if(templ[odpos..odpos+OPEN_DELIM.length] == OPEN_DELIM) {
-				delim_type = OPEN_DELIM;
-			} else {
-				assert(false, "Unknown delimer at " ~ templ[odpos..odpos+5]);
-			}
-
-			auto inbetween_delims = templ[odpos+delim_type.length ..close];
-
-			if(delim_type == OPEN_DELIM_STR) {
-				//Was an evaluate + output string delimer
-				push_line(`__buff.put(to!string((` ~ inbetween_delims ~ `)));`);
-			} else {
-				//Was an evaluate delimer
-				push_line(inbetween_delims);
-			}
-
-			templ = templ[close + CLOSE_DELIM.length .. $];
+		overflow++;
+		if(overflow > 100) {
+			throw new Exception(templ);
 		}
-		else {
-			//no more odpos delimers, append rest to buffer
-			push_line(`__buff.put("` ~ templ[0..$].escapeQuotes() ~ `");`);
-			break;
+
+		// open delimer position
+		immutable odPos = templ.countUntilAny(cast(string[])OpenDelims);
+		//assert(false, templ ~ " " ~ to!string(odPos) ~ " " ~ to!string(cast(string[])OpenDelims));
+		if(odPos == -1) {
+			push_line(`__buff.put("` ~ templ.escapeQuotes() ~ `");`);
+			templ = "";
+		} else {
+			if(templ[0..odPos].length) {
+				//Append everything before the open delimer to the buffer
+				push_line(`__buff.put("` ~ templ[0..odPos].escapeQuotes() ~ `");`);
+				templ = templ[odPos..$];
+			}
+
+			// Find open/close delims & positions
+			immutable openDelim  = enforce(templ.frontDelim(OpenDelims));
+			immutable closeDelim = OpenClosePairs[openDelim];
+
+			// I have no idea why I have to concat it with "", but that fixes
+			// the compiler crash
+			// TODO: CTFE crashes on countUntil
+			// when enum : string is casted to string
+			immutable cdPos = templ.countUntil("" ~ cast(string)closeDelim);
+			assert(cdPos != -1, "Couldn't find close delim '" ~ closeDelim ~ "'.");
+			immutable inBetweenDelims = templ[openDelim.length .. cdPos];
+
+			switch(cast(string) openDelim) {
+				case OpenDelim.OpenStr:
+				case OpenDelim.OpenShortStr:
+					push_line(`__buff.put(to!string((` ~ inBetweenDelims ~ `)));`);
+					break;
+
+				case OpenDelim.Open:
+				case OpenDelim.OpenShort:
+					push_line(inBetweenDelims);
+					break;
+				default:
+					// Should never get here, but because
+					// final switch is broken:
+					assert(false, "Invalid delimer: " ~ openDelim);
+			}
+
+			//Cut off what was inserted in the function body
+			templ = templ[cdPos + closeDelim.length .. $];
 		}
 	}
 
-	if(context_given) {
+	if(isContextGiven) {
 		outdent();
 		push_line("}");
 	}
@@ -151,8 +126,8 @@ string gen_templ_func_string(Context)(string templ) {
 }
 
 /**
-* Call like 
-* 
+* Call like
+*
 * ----
 * mixin Templ!(Context, string templ_string)
 * ----
@@ -160,7 +135,7 @@ string gen_templ_func_string(Context)(string templ) {
 * ----
 * Templ!(string templ_string)
 * ----
-* where Context is an arbitrary context type 
+* where Context is an arbitrary context type
 */
 
 template Templ(string template_string) {
@@ -173,9 +148,14 @@ template Templ(Context, string template_string) {
 
 version(unittest) {
 	import std.string;
+	import std.stdio;
 }
 unittest {
-	//Test delimer parsing
+	const render = Templ!("");
+	static assert(render() == "");
+}
+unittest {
+	// Test delimer parsing
 	const render = Templ!("<% if(true) { %>foo<% } %>");
 	static assert(render() == "foo");
 }
@@ -253,20 +233,15 @@ unittest {
 	static assert(render() == `'`);
 }
 unittest {
-	//Test unmatched closing delimer
-	const templ = `%>`;
-	const render = Templ!templ;
-	static assert(render() == `%>`);
-}
-unittest {
 	//Test <% %> shorthand %
 	const templ = q{
 		% foreach(i; 0..3) {
 			<%= i %>
 		% }
 	}.outdent();
-	//const render = Templ!templ;
-	const render = gen_templ_func_string!void(templ);
-	pragma(msg, render);
-	//static assert(render().stripWs == `012`);
+	const render = Templ!templ;
+	// TODO: Compiler complains it can't CTFE this,
+	// even though the individual functions are
+	// statically unit-testable just fine.
+	assert(render().stripWs() == `012`);
 }
