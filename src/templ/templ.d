@@ -67,22 +67,24 @@ string gen_templ_func_string(Context)(string templ) {
 			throw new Exception(templ);
 		}
 
-		// open delimer position
-		immutable odPos = templ.countUntilAny(cast(string[])OpenDelims);
+		immutable openDeilmPos = templ.nextDelim(OpenDelims);
+		immutable odPos = openDeilm.pos;
+		immutable openDelim = openDelim.delim;
+
 		//assert(false, templ ~ " " ~ to!string(odPos) ~ " " ~ to!string(cast(string[])OpenDelims));
 		if(odPos == -1) {
 			push_line(`__buff.put("` ~ templ.escapeQuotes() ~ `");`);
 			templ = "";
 		} else {
-			if(templ[0..odPos].length) {
+			immutable closeDelim = OpenClosePairs[openDelim];
+
+			if(openDelim.isShort())
+
+			if(odPos != 0) {
 				//Append everything before the open delimer to the buffer
 				push_line(`__buff.put("` ~ templ[0..odPos].escapeQuotes() ~ `");`);
 				templ = templ[odPos..$];
 			}
-
-			// Find open/close delims & positions
-			immutable openDelim  = enforce(templ.frontDelim(OpenDelims));
-			immutable closeDelim = OpenClosePairs[openDelim];
 
 			// I have no idea why I have to concat it with "", but that fixes
 			// the compiler crash
@@ -91,6 +93,13 @@ string gen_templ_func_string(Context)(string templ) {
 			immutable cdPos = templ.countUntil("" ~ cast(string)closeDelim);
 			assert(cdPos != -1, "Couldn't find close delim '" ~ closeDelim ~ "'.");
 			immutable inBetweenDelims = templ[openDelim.length .. cdPos];
+
+			// Check that shorthand delims don't have any non-ws
+			// before them on thier line.
+			//switch(cast(string) openDelim) {
+			//	case OpenDelim.OpenShortStr:
+			//	case OpenDelim.OpenShort:
+			//}
 
 			switch(cast(string) openDelim) {
 				case OpenDelim.OpenStr:
@@ -244,4 +253,14 @@ unittest {
 	// even though the individual functions are
 	// statically unit-testable just fine.
 	assert(render().stripWs() == `012`);
+}
+unittest {
+	// Test anything before shorthand
+	// delim is either whitespace or
+	// a newline.
+	const templ = q{
+		test %foo
+	}.outdent();
+	const render = Templ!templ;
+	assert(render().stripWs == "test%foo");
 }

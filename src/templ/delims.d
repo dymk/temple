@@ -1,7 +1,14 @@
 module templ.delims;
-import std.traits;
+import
+	std.traits,
+	std.typecons;
 
 alias string Delim;
+
+//A delimer and the index that its at
+template DelimPos(D : Delim) {
+	alias Tuple!(long, "pos", D, "Delim") DelimPos;
+}
 
 enum OpenDelim : Delim {
 	OpenShort    = "%",

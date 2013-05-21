@@ -10,6 +10,41 @@ import
 
 import templ.delims;
 
+bool isValidBeforeShortDelim(const(char)[] beforeShortDelim) {
+	//See if anything before the delimer is not whitespace,
+}
+
+bool isShort(OpenDelim d) {
+	return (
+		d == OpenDelim.OpenShort ||
+		d == OpenDelim.OpenShortStr);
+}
+unittest {
+	static assert(OpenDelim.OpenShortStr.isShort());
+	static assert(OpenDelim.OpenShort.isShort());
+}
+
+DelimPos nextDelim(Char1 : char, D : Delim)(const(Char1)[] haystack, const D[] delims) {
+	auto atPos = countUntilAny(haystack, delims);
+	if(atPos == -1) {
+		return cast(DelimPos)null;
+	}
+
+	auto sorted = delims.dup.sort!("cast(string)a.length > cast(string)b.length")();
+	foreach(ref s; sorted) {
+		if(startsWith(haystack[atPos..$], cast(string)s)) {
+			return DelimPos(atPos, s);
+		}
+	}
+	throw new Exception("Shouln't ever get here");
+}
+
+unittest {
+	const d = cast(string)Delim.Open;
+	static assert(d.nextDelim([Delim.Open]) == DelimPos(0, Delim.Open));
+	static assert("foo".nextDelim([Delim.Open]) == null);
+}
+
 ptrdiff_t countUntilAny(Char1, StrArr)(const(Char1)[] s, StrArr subs)
 // TODO: Figure out how to get Delims[] to cast to string[] automatically
 //if(is(StrArr : const(char)[][]))
@@ -72,7 +107,6 @@ unittest {
 	static assert(stripWs(" a s d f ") == "asdf");
 	static assert(stripWs(" a\ns\rd f ") == "asdf");
 }
-
 
 //Returns the deimer that the string starts with
 D frontDelim(D : const(string))(string str, D[] delims) {
