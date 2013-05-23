@@ -5,3 +5,4 @@
 *.a
 *.sublime-*
 build/*
+*.lst

@@ -14,7 +14,7 @@ import templ.delims;
 DelimPos nextDelim(Char1 : char)(const(Char1)[] haystack, const Delim[] delims) {
 	auto atPos = countUntilAny(haystack, delims);
 	if(atPos == -1) {
-		return DelimPos(-1, "");
+		return DelimPos(-1);
 	}
 
 	auto sorted = delims.dup.sort!("a.length > b.length")();
