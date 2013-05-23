@@ -5,13 +5,12 @@ _Compile Time Template Engine for D_
 ## Usage
 
 ###The API
-
 the `Templ` template resides in `templ.templ`.
 `Templ` comes in two flavors: One which takes a compile time evaluatable `string`, and one which takes an additional argument: an arbitrary `Context` type.  
 
 ----
 
-#####`template Templ(string template_string)`:
+#####`template Templ(string template_string)`
 Returns a `function string(void)`, which can then be called to render the template.
 ```d
 import
@@ -26,7 +25,7 @@ void main() {
 
 ----
 
-#####`template Templ(Context, string template_string)`:
+#####`template Templ(Context, string template_string)`
 Returns a string which can then be `mixin`'d in the scope of where the type Context is declared.
 The resulting function is of type `function string(Context)`
 
@@ -42,8 +41,7 @@ void main() {
 			return "I'm a method!";
 		}
 	}
-	const templ_str = "<%= member_method() %>
-<%= member_field %>";
+	const templ_str = "<%= member_method() %>\n<%= member_field %>";
 	auto render = mixin(Templ!(Ctx, templ_str)); //Templ must be mixed in
 
 	auto context = Ctx();
@@ -60,17 +58,10 @@ void main() {
 The template syntax is based off of that of [eRuby](https://en.wikipedia.org/wiki/ERuby). D code goes between <% and %> delimers. If you wish to capture the result of a D expression, place it between <%= %> chars, and it will be cast to a `string`.
 
 _Examples:_
-`foo` => `foo`  
-`<% "foo" %>` => `<no output>`  
-`<%= "foo" %>` => `foo`  
-```
-<% foreach(i; 0..3) { %>
-	Index: <%= i %>
-<% } %>
-```
-=>
-```
-Index: 0
-Index: 1
-Index: 2
-```
+
+| Input | Output |
+| ----- | ------ |
+| `foo` | `foo`  |
+| `<% "foo" %>`  | `<no output>` |
+| `<%= "foo" %>` | `foo`  |
+| ```<% foreach(i; 0..3) { %> Index: <%= i %> <% } %> ``` | ``` Index: 0 Index: 1 Index: 2``` |
