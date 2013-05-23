@@ -68,24 +68,21 @@ string gen_templ_func_string(Context)(string templ) {
 		}
 
 		immutable openDeilmPos = templ.nextDelim(OpenDelims);
-		immutable odPos = openDeilm.pos;
-		immutable openDelim = openDelim.delim;
+		immutable odPos = openDeilmPos.pos;
+		immutable openDelim = openDeilmPos.delim;
+		immutable closeDelim = OpenClosePairs[openDelim];	
 
 		//assert(false, templ ~ " " ~ to!string(odPos) ~ " " ~ to!string(cast(string[])OpenDelims));
 		if(odPos == -1) {
 			push_line(`__buff.put("` ~ templ.escapeQuotes() ~ `");`);
 			templ = "";
-		} else {
-			immutable closeDelim = OpenClosePairs[openDelim];
-
-			if(openDelim.isShort())
-
-			if(odPos != 0) {
-				//Append everything before the open delimer to the buffer
-				push_line(`__buff.put("` ~ templ[0..odPos].escapeQuotes() ~ `");`);
-				templ = templ[odPos..$];
-			}
-
+		} 
+		else if(odPos != 0) {
+			//Append everything before the open delimer to the buffer
+			push_line(`__buff.put("` ~ templ[0..odPos].escapeQuotes() ~ `");`);
+			templ = templ[odPos..$];
+		} 
+		else {
 			// I have no idea why I have to concat it with "", but that fixes
 			// the compiler crash
 			// TODO: CTFE crashes on countUntil
@@ -94,26 +91,16 @@ string gen_templ_func_string(Context)(string templ) {
 			assert(cdPos != -1, "Couldn't find close delim '" ~ closeDelim ~ "'.");
 			immutable inBetweenDelims = templ[openDelim.length .. cdPos];
 
-			// Check that shorthand delims don't have any non-ws
-			// before them on thier line.
-			//switch(cast(string) openDelim) {
-			//	case OpenDelim.OpenShortStr:
-			//	case OpenDelim.OpenShort:
-			//}
-
 			switch(cast(string) openDelim) {
 				case OpenDelim.OpenStr:
-				case OpenDelim.OpenShortStr:
 					push_line(`__buff.put(to!string((` ~ inBetweenDelims ~ `)));`);
 					break;
 
 				case OpenDelim.Open:
-				case OpenDelim.OpenShort:
 					push_line(inBetweenDelims);
 					break;
+
 				default:
-					// Should never get here, but because
-					// final switch is broken:
 					assert(false, "Invalid delimer: " ~ openDelim);
 			}
 
@@ -148,7 +135,9 @@ string gen_templ_func_string(Context)(string templ) {
 */
 
 template Templ(string template_string) {
+	#line 1 "TemplMixin"
 	enum Templ = mixin(gen_templ_func_string!void(template_string));
+	#line 153 "src/templ/templ.d"
 }
 
 template Templ(Context, string template_string) {
@@ -240,27 +229,4 @@ unittest {
 	const templ = `'`;
 	const render = Templ!templ;
 	static assert(render() == `'`);
-}
-unittest {
-	//Test <% %> shorthand %
-	const templ = q{
-		% foreach(i; 0..3) {
-			<%= i %>
-		% }
-	}.outdent();
-	const render = Templ!templ;
-	// TODO: Compiler complains it can't CTFE this,
-	// even though the individual functions are
-	// statically unit-testable just fine.
-	assert(render().stripWs() == `012`);
-}
-unittest {
-	// Test anything before shorthand
-	// delim is either whitespace or
-	// a newline.
-	const templ = q{
-		test %foo
-	}.outdent();
-	const render = Templ!templ;
-	assert(render().stripWs == "test%foo");
 }

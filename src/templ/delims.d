@@ -6,19 +6,17 @@ import
 alias string Delim;
 
 //A delimer and the index that its at
-template DelimPos(D : Delim) {
-	alias Tuple!(long, "pos", D, "Delim") DelimPos;
-}
+alias Tuple!(ptrdiff_t, "pos", Delim, "delim") DelimPos;
 
 enum OpenDelim : Delim {
-	OpenShort    = "%",
-	OpenShortStr = "%=",
+	//OpenShort    = "%",
+	//OpenShortStr = "%=",
 	Open         = "<%",
 	OpenStr      = "<%="
 }
 
 enum CloseDelim : Delim {
-	CloseShort   = "\n",
+	//CloseShort   = "\n",
 	Close        = "%>"
 }
 
@@ -34,31 +32,12 @@ enum Delims      = OpenDelims ~ cast(Delim[])CloseDelims;
 // until I figure out the version
 // flags that 2.062 sets vs 063.
 enum OpenClosePairs = [
-	OpenDelim.OpenShort    : CloseDelim.CloseShort,
-	OpenDelim.OpenShortStr : CloseDelim.CloseShort,
+	//OpenDelim.OpenShort    : CloseDelim.CloseShort,
+	//OpenDelim.OpenShortStr : CloseDelim.CloseShort,
 	OpenDelim.Open         : CloseDelim.Close,
 	OpenDelim.OpenStr      : CloseDelim.Close
 ];
 unittest {
 	static assert(OpenClosePairs[OpenDelim.Open] == CloseDelim.Close);
-	static assert(OpenClosePairs[OpenDelim.OpenShortStr] == CloseDelim.CloseShort);
+	//static assert(OpenClosePairs[OpenDelim.OpenShortStr] == CloseDelim.CloseShort);
 }
-
-//// For now use a final switch in place of a map.
-//CloseDelim closeForOpen(OpenDelim open) {
-//	// TODO: Another bug in DMD
-//	// http://d.puremagic.com/issues/show_bug.cgi?id=10113
-//	// Would use final switch, but that seems to
-//	// not play nice with enum : string
-//	// In fact 'final' does nothing here,
-//	// yet produces no warnings.
-//	final switch(cast(string)open) {
-//		case OpenDelim.OpenShort:    return CloseDelim.CloseShort;
-//		case OpenDelim.OpenShortStr: return CloseDelim.CloseShort;
-//		case OpenDelim.Open:         return CloseDelim.Close;
-//		case OpenDelim.OpenStr:      return CloseDelim.Close;
-//	}
-//	// So I guess this should provide marginal
-//	// protection while that's worked out
-//	throw new Exception("Unrecognized delimer: " ~ cast(string)open);
-//}
