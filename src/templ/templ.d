@@ -59,55 +59,30 @@ string gen_templ_func_string(Context)(string templ) {
 
 	// Sanity check because the compiler likes to
 	// crash my poor laptop on an infinite loop.
-	int overflow = 0;
+	//int overflow = 0;
 
-	while(!templ.empty) {
-		overflow++;
-		if(overflow > 100) {
-			throw new Exception(templ);
-		}
+	//while(!templ.empty) {
+	//	overflow++;
+	//	if(overflow > 100) { throw new Exception(templ); }
 
-		immutable openDeilmPos = templ.nextDelim(OpenDelims);
-		immutable odPos = openDeilmPos.pos;
-		immutable openDelim = openDeilmPos.delim;
-		immutable closeDelim = OpenClosePairs[openDelim];	
+	//	immutable openDeilmPos = templ.nextDelim(OpenDelims);
+	//	immutable odPos = openDeilmPos.pos;
+	//	immutable openDelim = cast(OpenDelim)openDeilmPos.delim;
+	//	immutable closeDelim = OpenToClose[openDelim];
 
-		//assert(false, templ ~ " " ~ to!string(odPos) ~ " " ~ to!string(cast(string[])OpenDelims));
-		if(odPos == -1) {
-			push_line(`__buff.put("` ~ templ.escapeQuotes() ~ `");`);
-			templ = "";
-		} 
-		else if(odPos != 0) {
-			//Append everything before the open delimer to the buffer
-			push_line(`__buff.put("` ~ templ[0..odPos].escapeQuotes() ~ `");`);
-			templ = templ[odPos..$];
-		} 
-		else {
-			// I have no idea why I have to concat it with "", but that fixes
-			// the compiler crash
-			// TODO: CTFE crashes on countUntil
-			// when enum : string is casted to string
-			immutable cdPos = templ.countUntil("" ~ cast(string)closeDelim);
-			assert(cdPos != -1, "Couldn't find close delim '" ~ closeDelim ~ "'.");
-			immutable inBetweenDelims = templ[openDelim.length .. cdPos];
-
-			switch(cast(string) openDelim) {
-				case OpenDelim.OpenStr:
-					push_line(`__buff.put(to!string((` ~ inBetweenDelims ~ `)));`);
-					break;
-
-				case OpenDelim.Open:
-					push_line(inBetweenDelims);
-					break;
-
-				default:
-					assert(false, "Invalid delimer: " ~ openDelim);
-			}
-
-			//Cut off what was inserted in the function body
-			templ = templ[cdPos + closeDelim.length .. $];
-		}
-	}
+	//	//assert(false, templ ~ " " ~ to!string(odPos) ~ " " ~ to!string(cast(string[])OpenDelims));
+	//	if(odPos == -1) {
+	//		push_line(`__buff.put("` ~ templ.escapeQuotes() ~ `");`);
+	//		templ = "";
+	//	}
+	//	else if(odPos != 0) {
+	//		//Append everything before the open delimer to the buffer
+	//		push_line(`__buff.put("` ~ templ[0..odPos].escapeQuotes() ~ `");`);
+	//		templ = templ[odPos..$];
+	//	}
+	//	else {
+	//	}
+	//}
 
 	if(isContextGiven) {
 		outdent();
@@ -144,89 +119,91 @@ template Templ(Context, string template_string) {
 	enum Templ = gen_templ_func_string!Context(template_string);
 }
 
-version(unittest) {
-	import std.string;
-	import std.stdio;
-}
-unittest {
-	const render = Templ!("");
-	static assert(render() == "");
-}
-unittest {
-	// Test delimer parsing
-	const render = Templ!("<% if(true) { %>foo<% } %>");
-	static assert(render() == "foo");
-}
-unittest {
-	//Test to!string of eval delimers
-	const render = Templ!(`<%= "foo" %>`);
-	static assert(render() == "foo");
-}
-unittest {
-	//Test raw text with no delimers
-	const render = Templ!(`foo`);
-	static assert(render() == "foo");
-}
-unittest {
-	//Assert that it's invalid if no context is used
-	static assert(!__traits(compiles, Templ!(`<%= test %>`)));
-}
-unittest {
-	//Assert that it's invalid if invalid context fields are used
-	struct Ctx {
-		string foo;
+version(none) {
+	version(unittest) {
+		import std.string;
+		import std.stdio;
 	}
-	static assert(!__traits(compiles, Templ!(`<%= bar %>`)));
-}
-unittest {
-	//Test static context fields
-	struct Ctx {
-		static static_field = "static value";
+	unittest {
+		const render = Templ!("");
+		static assert(render() == "");
 	}
-	const render = mixin(Templ!(Ctx, `<%= static_field %>`));
-	assert(render(Ctx()) == "static value");
-}
-unittest {
-	//Test member context fields
-	struct Ctx {
-		auto member_field = "member value";
+	unittest {
+		// Test delimer parsing
+		const render = Templ!("<% if(true) { %>foo<% } %>");
+		static assert(render() == "foo");
 	}
-	const render = mixin(Templ!(Ctx, `<%= member_field %>`));
-	static assert(render(Ctx()) == "member value");
-}
-unittest {
-	//Test looping
-	const templ = `<% foreach(i; 0..3) { %>foo<% } %>`;
-	const render = Templ!templ;
-	static assert(render() == "foofoofoo");
-}
-unittest {
-	//Test looping
-	const templ = `<% foreach(i; 0..3) { %><%= i %><% } %>`;
-	const render = Templ!templ;
-	static assert(render() == "012");
-}
-unittest {
-	//Test method calling & context state on contexts
-	struct Ctx {
-		int foo() {
-			return n_foo++;
+	unittest {
+		//Test to!string of eval delimers
+		const render = Templ!(`<%= "foo" %>`);
+		static assert(render() == "foo");
+	}
+	unittest {
+		//Test raw text with no delimers
+		const render = Templ!(`foo`);
+		static assert(render() == "foo");
+	}
+	unittest {
+		//Assert that it's invalid if no context is used
+		static assert(!__traits(compiles, Templ!(`<%= test %>`)));
+	}
+	unittest {
+		//Assert that it's invalid if invalid context fields are used
+		struct Ctx {
+			string foo;
 		}
-		int n_foo;
+		static assert(!__traits(compiles, Templ!(`<%= bar %>`)));
 	}
-	const templ = `<% foreach(i; 0..3) { %><%= foo() %><% } %>`;
-	const render = mixin(Templ!(Ctx, templ));
-	static assert(render(Ctx()) == "012");
-}
-unittest {
-	//Test escaping of "
-	const templ = `"`;
-	const render = Templ!templ;
-	static assert(render() == `"`);
-}
-unittest {
-	//Test escaping of '
-	const templ = `'`;
-	const render = Templ!templ;
-	static assert(render() == `'`);
+	unittest {
+		//Test static context fields
+		struct Ctx {
+			static static_field = "static value";
+		}
+		const render = mixin(Templ!(Ctx, `<%= static_field %>`));
+		assert(render(Ctx()) == "static value");
+	}
+	unittest {
+		//Test member context fields
+		struct Ctx {
+			auto member_field = "member value";
+		}
+		const render = mixin(Templ!(Ctx, `<%= member_field %>`));
+		static assert(render(Ctx()) == "member value");
+	}
+	unittest {
+		//Test looping
+		const templ = `<% foreach(i; 0..3) { %>foo<% } %>`;
+		const render = Templ!templ;
+		static assert(render() == "foofoofoo");
+	}
+	unittest {
+		//Test looping
+		const templ = `<% foreach(i; 0..3) { %><%= i %><% } %>`;
+		const render = Templ!templ;
+		static assert(render() == "012");
+	}
+	unittest {
+		//Test method calling & context state on contexts
+		struct Ctx {
+			int foo() {
+				return n_foo++;
+			}
+			int n_foo;
+		}
+		const templ = `<% foreach(i; 0..3) { %><%= foo() %><% } %>`;
+		const render = mixin(Templ!(Ctx, templ));
+		static assert(render(Ctx()) == "012");
+	}
+	unittest {
+		//Test escaping of "
+		const templ = `"`;
+		const render = Templ!templ;
+		static assert(render() == `"`);
+	}
+	unittest {
+		//Test escaping of '
+		const templ = `'`;
+		const render = Templ!templ;
+		static assert(render() == `'`);
+	}
 }

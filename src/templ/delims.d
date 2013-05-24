@@ -14,6 +14,7 @@ enum Delim {
 	CloseShort,
 	Close
 }
+enum Delims = [EnumMembers!Delim];
 
 enum OpenDelim  : Delim {
 	OpenShort 		= Delim.OpenShort,
@@ -21,10 +22,14 @@ enum OpenDelim  : Delim {
 	OpenShortStr	= Delim.OpenShortStr,
 	OpenStr 			= Delim.OpenStr
 };
+enum OpenDelims = [EnumMembers!OpenDelim];
+
 enum CloseDelim : Delim {
 	CloseShort 		= Delim.CloseShort,
 	Close 				= Delim.Close
 }
+enum CloseDelims = [EnumMembers!CloseDelim];
+
 enum OpenToClose = [
 	OpenDelim.OpenShort    : CloseDelim.CloseShort,
 	OpenDelim.OpenShortStr : CloseDelim.CloseShort,
@@ -35,7 +40,7 @@ unittest {
 	static assert(OpenToClose[OpenDelim.Open] == CloseDelim.Close);
 }
 
-string toString(Delim d) {
+string toString(const Delim d) {
 	with(Delim) {
 		final switch(d) {
 			case OpenShort: 		return "%";

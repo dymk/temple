@@ -5,38 +5,45 @@ import
   std.array,
   std.string,
   std.uni,
+  std.typecons,
   std.traits,
   std.algorithm;
 
 import templ.delims;
 
+auto CTFEMap(alias)
 
+// TODO: have nextDelim return a Maybe type
+// instead of a DelimPos with pos=-1
 DelimPos nextDelim(Char1 : char)(const(Char1)[] haystack, const Delim[] delims) {
-	auto atPos = countUntilAny(haystack, delims);
+
+	alias Tuple!(Delim, "delim", string, "str") DelimStrPair;
+
+	auto delims_strs = delims.map!( a => DelimStrPair(a, a.toString()) )().CTFEArray();
+	auto delim_strs = delims_strs.map!(a => a.str)().CTFEArray();
+
+	auto atPos = countUntilAny(haystack, delim_strs);
 	if(atPos == -1) {
-		return DelimPos(-1);
+		return DelimPos(-1, cast(Delim)0);
 	}
 
-	auto sorted = delims.dup.sort!("a.length > b.length")();
+	auto sorted = delims_strs.sort!("a.str.length > b.str.length")();
 	foreach(ref s; sorted) {
-		if(startsWith(haystack[atPos..$], cast(string)s)) {
-			return DelimPos(atPos, s);
+		if(startsWith(haystack[atPos..$], s.str)) {
+			return DelimPos(atPos, s.delim);
 		}
 	}
 	throw new Exception("Shouln't ever get here");
 }
 
 unittest {
-	const d = cast(string)OpenDelim.Open;
-	static assert(d.nextDelim([OpenDelim.Open]) == DelimPos(0, OpenDelim.Open));
-	static assert("foo".nextDelim([OpenDelim.Open]) == DelimPos(-1, ""));
+	const d = Delim.Open.toString();
+	static assert(d.nextDelim([Delim.Open]) == DelimPos(0, Delim.Open));
+	static assert("foo".nextDelim([Delim.Open]) == DelimPos(-1, Delim.Open));
 }
 
-ptrdiff_t countUntilAny(Char1, StrArr)(const(Char1)[] s, StrArr subs)
-// TODO: Figure out how to get Delims[] to cast to string[] automatically
-//if(is(StrArr : const(char)[][]))
-{
-	auto indexes_of = map!((a) { return s.countUntil(cast(string)a); })(subs);
+ptrdiff_t countUntilAny(Char1, StrArr)(const(Char1)[] s, StrArr subs) {
+	auto indexes_of = subs.map!((a) { return s.countUntil(cast(string)a); })();
 	ptrdiff_t min_index = -1;
 	foreach(index_of; indexes_of) {
 		if(index_of != -1) {
