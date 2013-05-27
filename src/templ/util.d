@@ -7,39 +7,82 @@ import
   std.uni,
   std.typecons,
   std.traits,
+  std.exception,
   std.algorithm;
 
 import templ.delims;
 
-auto CTFEMap(alias)
+bool validBeforeShort(string str) {
+	// Check that the tail of str is whitespace
+	// before a newline, or nothing.
+	foreach_reverse(dchar chr; str) {
+		if(chr == '\n') { return true; }
+		if(!chr.isWhite()) { return false; }
+	}
+	return true;
+}
 
-// TODO: have nextDelim return a Maybe type
-// instead of a DelimPos with pos=-1
-DelimPos nextDelim(Char1 : char)(const(Char1)[] haystack, const Delim[] delims) {
+unittest {
+	static assert("   ".validBeforeShort() == true);
+	static assert(" \t".validBeforeShort() == true);
+	static assert("foo\n".validBeforeShort() == true);
+	static assert("foo\n  ".validBeforeShort() == true);
+	static assert("foo\n  \t".validBeforeShort() == true);
+
+	static assert("foo  \t".validBeforeShort() == false);
+	static assert("foo".validBeforeShort() == false);
+	static assert("\nfoo".validBeforeShort() == false);
+}
+
+void munchHeadOf(ref string a, ref string b, uint amt) {
+	// Transfers amt of b's head onto a's tail
+	a = a ~ b[0..amt];
+	b = b[amt..$];
+}
+
+unittest {
+	auto a = "123";
+	auto b = "abc";
+	a.munchHeadOf(b, 1);
+	assert(a == "123a");
+	assert(b == "bc");
+}
+unittest {
+	auto a = "123";
+	auto b = "abc";
+	a.munchHeadOf(b, b.length);
+	assert(a == "123abc");
+	assert(b == "");
+}
+
+DelimPos!D* nextDelim(Char1 : char, D)(const(Char1)[] haystack, const D[] delims) {
 
 	alias Tuple!(Delim, "delim", string, "str") DelimStrPair;
 
-	auto delims_strs = delims.map!( a => DelimStrPair(a, a.toString()) )().CTFEArray();
-	auto delim_strs = delims_strs.map!(a => a.str)().CTFEArray();
+	auto delims_strs =      delims.map!(a => new DelimStrPair(a, a.toString()) )().array();
+	auto delim_strs  = delims_strs.map!(a => a.str)().array();
 
 	auto atPos = countUntilAny(haystack, delim_strs);
 	if(atPos == -1) {
-		return DelimPos(-1, cast(Delim)0);
+		return null;
 	}
 
 	auto sorted = delims_strs.sort!("a.str.length > b.str.length")();
 	foreach(ref s; sorted) {
 		if(startsWith(haystack[atPos..$], s.str)) {
-			return DelimPos(atPos, s.delim);
+			return new DelimPos!D(atPos, cast(D)s.delim);
 		}
 	}
-	throw new Exception("Shouln't ever get here");
+	throw new Exception("Impossible");
 }
 
 unittest {
-	const d = Delim.Open.toString();
-	static assert(d.nextDelim([Delim.Open]) == DelimPos(0, Delim.Open));
-	static assert("foo".nextDelim([Delim.Open]) == DelimPos(-1, Delim.Open));
+	const haystack = Delim.Open.toString();
+	static assert(*(haystack.nextDelim([Delim.Open])) == DelimPos!Delim(0, Delim.Open));
+}
+unittest {
+	const haystack = "foo";
+	static assert(haystack.nextDelim([Delim.Open]) is null);
 }
 
 ptrdiff_t countUntilAny(Char1, StrArr)(const(Char1)[] s, StrArr subs) {
@@ -71,11 +114,6 @@ unittest {
 unittest {
 	enum a = "%>";
 	static assert(a.countUntilAny(["<%", "<%="]) == -1);
-}
-unittest {
-	// TODO: Get Delims[] to cast to string[] automatically
-	enum a = "<%";
-	static assert(a.countUntilAny(cast(string[])OpenDelims) == 0);
 }
 
 string escapeQuotes(string unclean) {

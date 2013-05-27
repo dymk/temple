@@ -4,7 +4,9 @@ import
 	std.typecons;
 
 //A delimer and the index that its at
-alias Tuple!(ptrdiff_t, "pos", Delim, "delim") DelimPos;
+template DelimPos(D = Delim) {
+	alias DelimPos = Tuple!(ptrdiff_t, "pos", D, "delim");
+}
 
 enum Delim {
 	OpenShort,
@@ -41,14 +43,38 @@ unittest {
 }
 
 string toString(const Delim d) {
-	with(Delim) {
-		final switch(d) {
-			case OpenShort: 		return "%";
-			case OpenShortStr: 	return "%=";
-			case Open: 					return "<%";
-			case OpenStr: 			return "<%=";
-			case CloseShort:		return "\n";
-			case Close:					return "%>";
-		}
+	final switch(d) with(Delim) {
+		case OpenShort: 		return "%";
+		case OpenShortStr: 	return "%=";
+		case Open: 					return "<%";
+		case OpenStr: 			return "<%=";
+		case CloseShort:		return "\n";
+		case Close:					return "%>";
 	}
+}
+
+bool isShort(const Delim d) {
+	switch(d) with(Delim) {
+		case OpenShortStr:
+		case OpenShort   : return true;
+		default          : return false;
+	}
+}
+
+unittest {
+	static assert(Delim.OpenShort.isShort() == true);
+	static assert(Delim.Close.isShort() == false);
+}
+
+bool isStr(const Delim d) {
+	switch(d) with(Delim) {
+		case OpenShortStr:
+		case OpenStr     : return true;
+		default          : return false;
+	}
+}
+
+unittest {
+	static assert(Delim.OpenShort.isStr() == false);
+	static assert(Delim.OpenShortStr.isStr() == true);
 }
