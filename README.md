@@ -130,4 +130,8 @@ Did something!
 Did not do something!
 ```
 ---
+
 Furthermore `src/templ/templ.d`'s unittests contain many more examples of what is possible with contexts and shorthand notation. 
+
+### License
+**Templ-d** is released with the Boost license. See [here](http://www.boost.org/LICENSE_1_0.txt) for more details.
