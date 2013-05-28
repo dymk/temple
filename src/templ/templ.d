@@ -5,11 +5,7 @@ import
 
 import
   std.array,
-  std.algorithm,
-  std.conv,
-  std.traits,
-  std.exception,
-  std.typecons;
+  std.exception;
 
 string gen_templ_func_string(Context)(string templ) {
 
@@ -29,14 +25,15 @@ string gen_templ_func_string(Context)(string templ) {
 	void indent() { indent_level++; }
 	void outdent() { indent_level--; }
 
-	// Generates something like
+	// Generates a function akin to
 	/+
 	(Ctx __context) {
 		alias __context.a a;
 		auto d_code = "";
 		//generated code
 		return d_code;
-	}+/
+	}
+	+/
 
 	enum isContextGiven = !is(Context == void);
 	static if(!isContextGiven) {

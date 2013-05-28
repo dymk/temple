@@ -1,14 +1,10 @@
 module templ.util;
 
 import
-  std.range,
-  std.array,
-  std.string,
-  std.uni,
+  std.algorithm,
   std.typecons,
-  std.traits,
-  std.exception,
-  std.algorithm;
+  std.array,
+  std.uni;
 
 import templ.delims;
 
@@ -138,35 +134,4 @@ unittest {
 	static assert(stripWs("    \t") == "");
 	static assert(stripWs(" a s d f ") == "asdf");
 	static assert(stripWs(" a\ns\rd f ") == "asdf");
-}
-
-//Returns the deimer that the string starts with
-D frontDelim(D : const(string))(string str, D[] delims) {
-	//Sort so longer delims are compared first
-	//Eg, <%= is checked before <%
-	delims.sort!((a, b) {
-		return a.length > b.length;
-	})();
-
-	foreach(delim; delims) {
-		if(str.startsWith(cast(string)delim)) {
-			return delim;
-		}
-	}
-	return null;
-}
-
-unittest {
-	enum DELIMS = [
-		"<%",
-		"<%=",
-		"aa",
-		"a"
-	];
-
-	static assert("a".frontDelim(DELIMS) == "a");
-	static assert("aa".frontDelim(DELIMS) == "aa");
-	static assert("<%".frontDelim(DELIMS) == "<%");
-	static assert("<%=".frontDelim(DELIMS) == "<%=");
-	static assert("%".frontDelim(DELIMS) == null);
 }
