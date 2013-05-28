@@ -30,7 +30,7 @@ unittest {
 	static assert("\nfoo".validBeforeShort() == false);
 }
 
-void munchHeadOf(ref string a, ref string b, uint amt) {
+void munchHeadOf(ref string a, ref string b, size_t amt) {
 	// Transfers amt of b's head onto a's tail
 	a = a ~ b[0..amt];
 	b = b[amt..$];
