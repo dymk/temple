@@ -4,5 +4,4 @@
 *.o
 *.a
 *.sublime-*
-build/*
 *.lst

@@ -55,8 +55,18 @@ DelimPos!D* nextDelim(Char1 : char, D)(const(Char1)[] haystack, const D[] delims
 
 	alias Tuple!(Delim, "delim", string, "str") DelimStrPair;
 
-	auto delims_strs =      delims.map!(a => new DelimStrPair(a, a.toString()) )().array();
-	auto delim_strs  = delims_strs.map!(a => a.str)().array();
+	//auto delims_strs =      delims.map!(a => new DelimStrPair(a, a.toString()) )().array();
+	//auto delim_strs  = delims_strs.map!(a => a.str)().array();
+	DelimStrPair[] delims_strs;
+	foreach(delim; delims) {
+		delims_strs ~= DelimStrPair(delim, toString(delim));
+	}
+
+	string[] delim_strs;
+	foreach(delim; delims) {
+		// Would use ~= here, but CTFE in 2.063 can't handle it
+		delim_strs = delim_strs ~ toString(delim);
+	}
 
 	auto atPos = countUntilAny(haystack, delim_strs);
 	if(atPos == -1) {
