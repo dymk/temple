@@ -1,0 +1,9 @@
+test4_root rendered
+var1 here:
+this_is_var1
+test4_subroot rendered
+var1 here:
+this_is_var1
+rendering subsub view with explicit new context
+test4_subsubroot here
+var1 is set? false

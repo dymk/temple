@@ -1,0 +1,8 @@
+<html>
+	<body>
+		Welcome, <%= var("name") %>
+		Will this work? <%= var("will_work").get!bool ? "yes" : "no" %>
+		<% var("will_work") = false; %>
+		And now? <%= var("will_work").get!bool ? "yes" : "no" %>
+	</body>
+</html>

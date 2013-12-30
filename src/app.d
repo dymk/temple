@@ -1,4 +1,4 @@
-import templ.templ;
+import temple.temple;
 
 version(unittest) {
 	pragma(msg, "Compiling templ with tests...");

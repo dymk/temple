@@ -1,4 +1,4 @@
-module templ.util;
+module temple.util;
 
 import
   std.algorithm,
@@ -6,7 +6,7 @@ import
   std.array,
   std.uni;
 
-import templ.delims;
+import temple.delims;
 
 bool validBeforeShort(string str) {
 	// Check that the tail of str is whitespace

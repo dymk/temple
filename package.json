@@ -1,8 +1,10 @@
 {
-	"name": "templ-d",
+	"name": "temple",
 	"description": "Compile Time Template Engine for D",
 	"copyright": "Copyright © 2013, Dylan Knutson",
 	"authors": [
 		"Dylan Knutson"
-	]
+	],
+
+	"stringImportPaths": ["test"]
 }

@@ -1,0 +1,6 @@
+<html>
+	<body>
+		Nested template:
+		<h1>I am nested!</h1>
+	</body>
+</html>

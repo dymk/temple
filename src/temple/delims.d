@@ -1,4 +1,4 @@
-module templ.delims;
+module temple.delims;
 
 import
 	std.traits,
