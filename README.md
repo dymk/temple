@@ -233,10 +233,20 @@ Rendering `a.emd` would result in:
 </html>
 ```
 
+Yielding
+--------
+
+`yield`ing templates (to implement common layouts) is currently being implemented,
+and soon come in a future version of Temple.
+
 Notes
 -----
-Furthermore `src/temple/temple.d`'s unittests contain many more examples of what is possible with contexts and shorthand notation.
+The D compiler must be told which directories are okay to import text from.
+Use the `-J<folder>` compiler switch or `stringImportPaths` in Dub to include your template
+directory so Temple can access them.
+
+For more examples, take a look at`src/temple/temple.d`'s unittests.
 
 License
 -------
-*Temple* is released with the Boost license. See [here](http://www.boost.org/LICENSE_1_0.txt) for more details.
+*Temple* is distributed under the [Boost Software License](http://www.boost.org/LICENSE_1_0.txt).

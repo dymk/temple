@@ -1,8 +1,10 @@
 {
 	"name": "temple",
-	"description": "Compile Time Template Engine for D",
+	"description": "Embedded D, Compile Time Template Engine",
 	"copyright": "Copyright © 2013, Dylan Knutson",
-	"authors": [
+	"license": "BSL-1.0",
+	"authors":
+	[
 		"Dylan Knutson"
 	],
 
