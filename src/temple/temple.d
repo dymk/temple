@@ -370,7 +370,7 @@ unittest
 unittest
 {
 	// Loading templates from a file
-	alias render = TempleFile!"../test/test1.emd";
+	alias render = TempleFile!"test1.emd";
 	auto accum = new AppenderOutputStream();
 	auto compare = readText("test/test1.emd.txt");
 
@@ -380,7 +380,7 @@ unittest
 
 unittest
 {
-	alias render = TempleFile!"../test/test2.emd";
+	alias render = TempleFile!"test2.emd";
 	auto compare = readText("test/test2.emd.txt");
 	auto accum = new AppenderOutputStream();
 
@@ -394,7 +394,7 @@ unittest
 
 unittest
 {
-	alias render = TempleFile!"../test/test3_nester.emd";
+	alias render = TempleFile!"test3_nester.emd";
 	auto compare = readText("test/test3.emd.txt");
 	auto accum = new AppenderOutputStream();
 
@@ -404,7 +404,7 @@ unittest
 
 unittest
 {
-	alias render = TempleFile!"../test/test4_root.emd";
+	alias render = TempleFile!"test4_root.emd";
 	auto compare = readText("test/test4.emd.txt");
 	auto accum = new AppenderOutputStream();
 
@@ -441,9 +441,9 @@ unittest
 
 unittest
 {
-	alias layout = TempleLayoutFile!"../test/test5_layout.emd";
-	alias partial1 = TempleFile!"../test/test5_partial1.emd";
-	alias partial2 = TempleFile!"../test/test5_partial2.emd";
+	alias layout = TempleLayoutFile!"test5_layout.emd";
+	alias partial1 = TempleFile!"test5_partial1.emd";
+	alias partial2 = TempleFile!"test5_partial2.emd";
 
 	auto accum = new AppenderOutputStream();
 
@@ -459,8 +459,8 @@ unittest
 // Layouts and contexts
 unittest
 {
-	alias layout = TempleLayoutFile!"../test/test6_layout.emd";
-	alias partial = TempleFile!"../test/test6_partial.emd";
+	alias layout = TempleLayoutFile!"test6_layout.emd";
+	alias partial = TempleFile!"test6_partial.emd";
 	auto accum = new AppenderOutputStream();
 	auto context = new TempleContext();
 
