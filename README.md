@@ -1,6 +1,6 @@
 Temple
 ======
-A Compile Time, Zero Overhead, Embedded Templeate Engine for D
+A Compile Time, Zero Overhead, Embedded Template Engine for D
 
 About
 -----
@@ -12,16 +12,26 @@ rendering.
 Temple supports passing any number of variables to templates, as well as rendering
 nested templates within each other.
 
+[Vibe.d](http://vibed.org/) compatible! `OutputStream` is implemented by vibe.d's
+connections, so just pass your `TCPConnection` or `HTTPServerResponse` where the
+following examples pass an `AppenderOutputStream`.
+
 Usage
 -----
 Include `temple` in your `package.json`, or all of the files in
 `src/temple` in your build process.
 
-The main API exposed by Temple consists of two templates, and a struct:
+The main API exposed by Temple consists of a few templates, and a struct:
  - `template Temple(string template_string)`
  - `template TempleFile(string file_name)`
+ - `template TempleLayout(string layout_string)`
+ - `template TempleLayoutFile(string layout_file)`
  - `struct TempleContext`
+ - `interface OutputStream`
 
+Temple(File)s take an `OutputStream` and an optional `TempleContext`.
+TempleLayout(File)s take an `OutputStream`, a Temple(File) function pointer (the
+partial rendered in the layout), and an optional `TempleContext`.
 
 Template Syntax
 ---------------
@@ -92,7 +102,7 @@ to retrieve variables in the context, and can be called direty with `var` in the
 template:
 
 ```d
-auto context = TempleContext();
+auto context = new TempleContext();
 context.name = "dymk";
 context.should_bort = true;
 ```
@@ -125,9 +135,9 @@ For more information, see the Variant documentation on [the dlang website](http:
 
 The Temple Template
 -------------------
-`Template!"template string"` evaluates to a function that takes an output range
-(as determined by `isOutputRange`), and an optional `TemplateContext`. The easiest
-way to render the template into a string is to pass it an `Appender!string` from std.string.
+`Template!"template string"` evaluates to a function that takes an `OutputStream`,
+and an optional `TemplateContext`. The easiest way to render the template into a
+string is to pass it an `AppenderOutputStream` from `temple.output_stream`.
 
 ```d
 import
@@ -139,7 +149,7 @@ void main()
 {
 	alias render = Temple!"foo, bar, baz";
 
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 
 	writeln(accum.data); // Prints "foo, bar, baz"
@@ -155,9 +165,9 @@ void main()
 		Hello, <%= var("name") %>
 	};
 	alias render = Temple!templ_str;
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream;
 
-	auto context = TempleContext();
+	auto context = new TempleContext();
 	context.name = "dymk";
 
 	render(accum, context);
@@ -187,10 +197,10 @@ import
 void main() {
 	alias render = TempleFile!"template.emd";
 
-	auto context = TempleContext();
+	auto context = new TempleContext();
 	context.hour = 5;
 
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 
 	writeln(accum.data);
@@ -233,11 +243,111 @@ Rendering `a.emd` would result in:
 </html>
 ```
 
-Yielding
---------
+Yielding, Layouts, and Partials
+-------------------------------
 
-`yield`ing templates (to implement common layouts) is currently being implemented,
-and soon come in a future version of Temple.
+`yield`, when called inside the template of a Temple, will render the current context's partial
+in its place, if the context has a partial to render. TempleLayout provides a shortcut
+to setting up a `TempleContext` with a partial:
+
+```d
+void main()
+{
+	alias layout = TempleLayout!`before <%= yield %> after`;
+	alias partial = Temple!`foo: <%= var("foo") %>`;
+	auto accum = new AppenderOutputStream();
+
+	auto context = new TempleContext();
+	context.foo = "bar";
+
+	// An optional context can be passed to layout
+	layout(accum, &partial, context);
+	writeln(accum);
+}
+```
+Prints:
+```
+before foo: bar after
+```
+
+And, for completeness, `TempleLayoutFile` exists for loading a template directly
+from a file.
+
+Example
+-------
+
+Here's a slightly more complex example, demonstrating how to use
+
+```d
+void main()
+{
+	alias layout = TempleLayoutFile!"layout.html.emd";
+	alias partial = TempleFile!"_partial.html.emd";
+	auto accum = new AppenderOutputStream();
+
+	layout(accum, &partial);
+	writeln(accum.data);
+}
+```
+
+`layout.html.emd`
+```d
+<html>
+	<head>
+		<title>dymk's awesome website</title>
+	</head>
+	<body>
+		%= render!"common/_sidebar.html.emd"()
+		%= yield
+		%= render!"common/_footer.html.emd"()
+	</body>
+</html>
+```
+
+`common/_sidebar.html.emd`
+```html
+<ul>
+	<li><a href="/">Home</a></li>
+	<li><a href="/about">About</a></li>
+	<li><a href="/contact">Contact</a></li>
+</ul>
+```
+
+`common/_footer.html.emd`
+```html
+<footer>
+	2013 (C) dymk .: built with Temple :.
+</footer>
+```
+
+`_partial.html.emd`
+```html
+<section>
+	TODO: Write a website
+</section>
+```
+
+Output:
+```html
+<html>
+	<head>
+		<title>dymk's awesome website</title>
+	</head>
+	<body>
+		<ul>
+			<li><a href="/">Home</a></li>
+			<li><a href="/about">About</a></li>
+			<li><a href="/contact">Contact</a></li>
+		</ul>
+		<section>
+			TODO: Write a website
+		</section>
+		<footer>
+			2013 (C) dymk .: built with Temple :.
+		</footer>
+	</body>
+</html>
+```
 
 Notes
 -----
@@ -245,7 +355,8 @@ The D compiler must be told which directories are okay to import text from.
 Use the `-J<folder>` compiler switch or `stringImportPaths` in Dub to include your template
 directory so Temple can access them.
 
-For more examples, take a look at`src/temple/temple.d`'s unittests.
+For more examples, take a look at`src/temple/temple.d`'s unittests; they provide
+very good coverage of the library's abilities.
 
 License
 -------

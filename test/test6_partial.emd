@@ -1,0 +1,5 @@
+<section>
+	<p><b>Name: </b><%= var("name") %></p>
+	<p><b>University: </b><%= var("uni") %></p>
+	<p><b>Age: </b><%= var("age") %></p>
+</section>

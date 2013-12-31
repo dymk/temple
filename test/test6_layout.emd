@@ -1,0 +1,9 @@
+<html>
+	<head>
+		<title>The Blog of <%= var("name") %></title>
+	</head>
+	<body>
+		Hello, welcome to page blah blah! Here's a little bit about me:
+		<%= render!"../test/test6_partial.emd"() %>
+	</body>
+</html>

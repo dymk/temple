@@ -1,6 +1,6 @@
 {
 	"name": "temple",
-	"description": "Embedded D, Compile Time Template Engine",
+	"description": "Embedded D, Compile Time Template Engine (Vibe.d Compatible)",
 	"copyright": "Copyright © 2013, Dylan Knutson",
 	"license": "BSL-1.0",
 	"authors":

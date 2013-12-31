@@ -1,0 +1,22 @@
+<html>
+	<head>
+		<title>Isn't this neat?</title>
+	</head>
+	<body>
+		Test 5: This is the layout.
+		<section>
+			Partial number 2 section here. Embedding partial 1:
+			<section>
+				Here's a section from the test5 partial.
+				Rendering something even more nested:
+
+				i is: 0
+				i is: 1
+				i is: 2
+			</section>
+		</section>
+		<footer>
+			Here's a nice little footer.
+		</footer>
+	</body>
+</html>

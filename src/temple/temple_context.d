@@ -25,15 +25,27 @@ import temple.output_stream;
 public import std.variant : Variant;
 private import std.array, std.string;
 
-struct TempleContext
+class TempleContext
 {
 private:
 	Variant[string] vars;
 
+	TempleFunc* yielded_template;
+
 public:
-	Variant opDispatch(string op)()
+	void partial(TempleFunc* temple_func) @property
 	{
-		return get(op);
+		yielded_template = temple_func;
+	}
+
+	auto partial() @property
+	{
+		return yielded_template;
+	}
+
+	Variant opDispatch(string op)() @property
+	{
+		return vars[op];
 	}
 
 	void opDispatch(string op, T)(T other) @property
@@ -54,22 +66,37 @@ public:
 		return vars[name];
 	}
 
-	static string renderWith(string file)(TempleContext ctx = TempleContext())
+	static string renderWith(string file)(TempleContext ctx = null)
 	{
+		if(ctx is null)
+		{
+			ctx = new TempleContext();
+		}
+
 		alias render_func = TempleFile!(file);
-		auto buff = appender!string;
+		auto buff = new AppenderOutputStream();
 		render_func(buff, ctx);
 		return buff.data();
 	}
 
 	string render(string file)()
 	{
-		return renderWith!file(this);
+		return TempleContext.renderWith!(file)(this);
 	}
 
-	// DMD bug; can't use
-	//string render(string file)(TempleContext ctx)
-	//{
-	//	return renderWith!file(ctx);
-	//}
+	string yield()
+	{
+		auto buff = new AppenderOutputStream();
+		scope(exit) { buff.clear(); }
+
+		if(yielded_template is null)
+		{
+			return "";
+		}
+		else
+		{
+			(*yielded_template)(buff, this);
+			return buff.data;
+		}
+	}
 }

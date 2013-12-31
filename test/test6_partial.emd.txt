@@ -1,0 +1,13 @@
+<html>
+	<head>
+		<title>The Blog of dymk</title>
+	</head>
+	<body>
+		Hello, welcome to page blah blah! Here's a little bit about me:
+		<section>
+			<p><b>Name: </b>dymk</p>
+			<p><b>University: </b>UCSD</p>
+			<p><b>Age: </b>18</p>
+		</section>
+	</body>
+</html>

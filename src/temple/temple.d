@@ -51,12 +51,19 @@ string gen_temple_func_string(string temple_str)
 	void indent()  { indent_level++; }
 	void outdent() { indent_level--; }
 
-	push_line(`void Temple(OS)(OS __buff, TempleContext __context = TempleContext())`);
-	push_line(`if(isOutputRange!(OS, string))`);
-	push_line(`{`);
+	push_line(`void Temple(OutputStream __buff, TempleContext __context = null) {`);
+	//push_line(`{`);
 	indent();
-	push_line(`import std.conv;`);
-	push_line(`__buff.put("");`);
+	push_line(
+	q{
+		if(__context is null)
+		{
+			__context = new TempleContext();
+		}
+
+		import std.conv : to;
+		__buff.put("");
+	});
 
 	push_line(`with(__context) {`);
 	indent();
@@ -149,18 +156,52 @@ string gen_temple_func_string(string temple_str)
 	return function_str;
 }
 
-template Temple(string template_string, string name = "")
+template Temple(string template_string)
 {
 	#line 1 "Temple"
 	mixin(gen_temple_func_string(template_string));
-	#line 137 "src/temple/temple.d"
-	static assert(__LINE__ == 137);
+	#line 164 "src/temple/temple.d"
+	static assert(__LINE__ == 164);
 }
 
-template TempleFile(string template_string)
+package alias TempleFunc = typeof(Temple!"");
+
+template TempleFile(string template_file)
 {
-	pragma(msg, "Compiling ", template_string, "...");
-	alias TempleFile = Temple!(import(template_string));
+	pragma(msg, "Compiling ", template_file, "...");
+	alias TempleFile = Temple!(import(template_file));
+}
+
+template TempleLayout(string template_string)
+{
+	alias layout_renderer = Temple!template_string;
+	alias TempleLayout = TempleLayoutImpl!layout_renderer;
+}
+
+template TempleLayoutFile(string template_file)
+{
+	alias layout_renderer = TempleFile!template_file;
+	alias TempleLayoutFile = TempleLayoutImpl!layout_renderer;
+}
+
+private void TempleLayoutImpl(alias layout_renderer)(
+	OutputStream buff,
+	TempleFunc* temple_func,
+	TempleContext context = null)
+{
+	if(context is null)
+	{
+		context = new TempleContext();
+	}
+
+	auto old_partial = context.partial;
+	context.partial = temple_func;
+	scope(exit)
+	{
+		context.partial = old_partial;
+	}
+
+	layout_renderer(buff, context);
 }
 
 version(unittest)
@@ -188,7 +229,7 @@ version(unittest)
 unittest
 {
 	alias render = Temple!"";
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 
 	render(accum);
 	assert(accum.data == "");
@@ -199,7 +240,7 @@ unittest
 {
 	//Test to!string of eval delimers
 	alias render = Temple!(`<%= "foo" %>`);
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(accum.data == "foo");
 }
@@ -208,7 +249,7 @@ unittest
 {
 	// Test delimer parsing
 	alias render = Temple!("<% if(true) { %>foo<% } %>");
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(accum.data == "foo");
 }
@@ -216,7 +257,7 @@ unittest
 {
 	//Test raw text with no delimers
 	alias render = Temple!(`foo`);
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(accum.data == "foo");
 }
@@ -226,7 +267,7 @@ unittest
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %>foo<% } %>`;
 	alias render = Temple!templ;
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(accum.data == "foofoofoo");
 }
@@ -236,7 +277,7 @@ unittest
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %><%= i %><% } %>`;
 	alias render = Temple!templ;
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(accum.data == "012");
 }
@@ -246,7 +287,7 @@ unittest
 	//Test escaping of "
 	const templ = `"`;
 	alias render = Temple!templ;
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(accum.data == `"`);
 }
@@ -256,7 +297,7 @@ unittest
 	//Test escaping of '
 	const templ = `'`;
 	alias render = Temple!templ;
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(accum.data == `'`);
 }
@@ -270,7 +311,7 @@ unittest
 		% }
 	`;
 	alias render = Temple!(templ);
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(isSameRender(accum.data, "Hello!"));
 }
@@ -284,7 +325,7 @@ unittest
 		% }
 	`;
 	alias render = Temple!(templ);
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(isSameRender(accum.data, "foo"));
 }
@@ -293,7 +334,7 @@ unittest
 	// Test shorthand only after newline
 	const templ = `foo%bar`;
 	alias render = Temple!(templ);
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	render(accum);
 	assert(accum.data == "foo%bar");
 }
@@ -303,7 +344,7 @@ unittest
 	// Ditto
 	const templ = `<%= "foo%bar" %>`;
 	alias render = Temple!(templ);
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 
 	render(accum);
 	assert(accum.data == "foo%bar");
@@ -311,13 +352,13 @@ unittest
 
 unittest
 {
-	auto params = TempleContext();
+	auto params = new TempleContext();
 	params.foo = 123;
 	params.bar = "test";
 
 	const templ = `<%= var("foo") %> <%= var("bar") %>`;
 	alias render = Temple!templ;
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 
 	render(accum, params);
 	assert(accum.data == "123 test");
@@ -327,7 +368,7 @@ unittest
 {
 	// Loading templates from a file
 	alias render = TempleFile!"../test/test1.emd";
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 	auto compare = readText("test/test1.emd.txt");
 
 	render(accum);
@@ -338,9 +379,9 @@ unittest
 {
 	alias render = TempleFile!"../test/test2.emd";
 	auto compare = readText("test/test2.emd.txt");
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 
-	auto ctx = TempleContext();
+	auto ctx = new TempleContext();
 	ctx.name = "dymk";
 	ctx.will_work = true;
 
@@ -352,7 +393,7 @@ unittest
 {
 	alias render = TempleFile!"../test/test3_nester.emd";
 	auto compare = readText("test/test3.emd.txt");
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 
 	render(accum);
 	assert(isSameRender(accum.data, compare));
@@ -362,11 +403,68 @@ unittest
 {
 	alias render = TempleFile!"../test/test4_root.emd";
 	auto compare = readText("test/test4.emd.txt");
-	auto accum = appender!string();
+	auto accum = new AppenderOutputStream();
 
-	auto ctx = TempleContext();
+	auto ctx = new TempleContext();
 	ctx.var1 = "this_is_var1";
 
 	render(accum, ctx);
 	assert(isSameRender(accum.data, compare));
+}
+
+unittest
+{
+	alias render = Temple!"before <%= yield %> after";
+	alias partial = Temple!"between";
+	auto accum = new AppenderOutputStream();
+
+	auto context = new TempleContext();
+	context.partial = &partial;
+
+	render(accum, context);
+	assert(isSameRender(accum.data, "before between after"));
+}
+
+unittest
+{
+	alias layout = TempleLayout!"before <%= yield %> after";
+	alias partial = Temple!"between";
+	auto accum = new AppenderOutputStream();
+
+	layout(accum, &partial);
+
+	assert(isSameRender(accum.data, "before between after"));
+}
+
+unittest
+{
+	alias layout = TempleLayoutFile!"../test/test5_layout.emd";
+	alias partial1 = TempleFile!"../test/test5_partial1.emd";
+	alias partial2 = TempleFile!"../test/test5_partial2.emd";
+
+	auto accum = new AppenderOutputStream();
+
+	layout(accum, &partial1);
+
+	assert(isSameRender(accum.data, readText("test/test5_partial1.emd.txt")));
+
+	accum.clear;
+	layout(accum, &partial2);
+	assert(isSameRender(accum.data, readText("test/test5_partial2.emd.txt")));
+}
+
+// Layouts and contexts
+unittest
+{
+	alias layout = TempleLayoutFile!"../test/test6_layout.emd";
+	alias partial = TempleFile!"../test/test6_partial.emd";
+	auto accum = new AppenderOutputStream();
+	auto context = new TempleContext();
+
+	context.name = "dymk";
+	context.uni = "UCSD";
+	context.age = 18;
+
+	layout(accum, &partial, context);
+	assert(isSameRender(accum.data, readText("test/test6_partial.emd.txt")));
 }

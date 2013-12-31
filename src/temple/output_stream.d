@@ -59,3 +59,25 @@ else
 		final void put(in dchar[] elems) { foreach( ch; elems ) put(ch); }
 	}
 }
+
+class AppenderOutputStream : OutputStream
+{
+	import std.array : Appender;
+
+	Appender!string accum;
+
+	void write(in ubyte[] bytes)
+	{
+		accum.put(cast(string) bytes);
+	}
+
+	string data()
+	{
+		return accum.data;
+	}
+
+	void clear()
+	{
+		accum.clear();
+	}
+}

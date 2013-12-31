@@ -1,0 +1,4 @@
+<section>
+	Partial number 2 section here. Embedding partial 1:
+	<%= render!"../test/test5_partial1.emd"() %>
+</section>
