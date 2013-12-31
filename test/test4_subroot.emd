@@ -2,4 +2,4 @@ test4_subroot rendered
 var1 here:
 %= var("var1")
 rendering subsub view with explicit new context
-%= renderWith!"../test/test4_subsubroot.emd"()
+%= renderWith!"test4_subsubroot.emd"()

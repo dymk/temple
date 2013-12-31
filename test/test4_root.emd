@@ -1,4 +1,4 @@
 test4_root rendered
 var1 here:
 %= var("var1")
-%= render!"../test/test4_subroot.emd"()
+%= render!"test4_subroot.emd"()
