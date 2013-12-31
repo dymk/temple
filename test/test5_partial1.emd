@@ -1,5 +1,5 @@
 <section>
 	Here's a section from the test5 partial.
 	Rendering something even more nested:
-	<%= render!"../test/test1.emd"() %>
+	<%= render!"test1.emd"() %>
 </section>
