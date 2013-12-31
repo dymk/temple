@@ -19,9 +19,10 @@
 
 module temple.output_stream;
 
-version(Have_vibed)
+version(Have_vibe_d)
 {
 	public import vibe.core.stream : OutputStream;
+	private import vibe.core.stream : InputStream;
 }
 else
 {
@@ -79,5 +80,16 @@ class AppenderOutputStream : OutputStream
 	void clear()
 	{
 		accum.clear();
+	}
+
+	version(Have_vibe_d)
+	{
+		// Stubbed out to conform to vibed interface
+		void flush() {}
+		void finalize() {}
+		void write(InputStream stream, ulong nbytes = 0LU)
+		{
+			writeDefault(stream, nbytes);
+		}
 	}
 }

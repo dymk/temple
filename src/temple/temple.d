@@ -18,11 +18,14 @@
  */
 
 module temple.temple;
-import
+private import
   temple.util,
-  temple.delims,
-  temple.output_stream,
-  temple.temple_context;
+  temple.delims;
+
+public import
+	temple.temple,
+	temple.temple_context,
+	temple.output_stream;
 
 import
   std.array,
