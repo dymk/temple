@@ -1,0 +1,5 @@
+this is a line here
+<% a %>
+Also lines here? What's up with that?
+<%= foobar; %> <%= bazzle? %>
+This is line 5.

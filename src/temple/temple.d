@@ -30,13 +30,16 @@ public import
 import
   std.array,
   std.exception,
+  std.conv,
+  std.algorithm,
   std.range;
 
-string gen_temple_func_string(string temple_str)
+string gen_temple_func_string(string temple_str, string temple_name = "InlineTemplate")
 {
 
 	auto function_str = "";
 	auto indent_level = 0;
+	size_t line_number = 0;
 
 	void push_line(string[] stmts...)
 	{
@@ -49,6 +52,11 @@ string gen_temple_func_string(string temple_str)
 			function_str ~= stmt;
 		}
 		function_str ~= '\n';
+	}
+
+	void push_linenum()
+	{
+		push_line(`#line ` ~ (line_number + 1).to!string ~ ` "` ~ temple_name ~ `"`);
 	}
 
 	void indent()  { indent_level++; }
@@ -85,6 +93,7 @@ string gen_temple_func_string(string temple_str)
 		if(oDelimPos is null)
 		{
 			//No more delims; append the rest as a string
+			push_linenum();
 			push_line(`__buff.put("` ~ temple_str.escapeQuotes() ~ `");`);
 			prevTempl.munchHeadOf(temple_str, temple_str.length);
 		}
@@ -101,6 +110,7 @@ string gen_temple_func_string(string temple_str)
 					{
 						// Chars before % were invalid, assume it's part of a
 						// string literal.
+						push_linenum();
 						push_line(`__buff.put("` ~ temple_str[0..oDelim.toString().length] ~ `");`);
 						prevTempl.munchHeadOf(temple_str, oDelim.toString().length);
 						continue;
@@ -127,9 +137,11 @@ string gen_temple_func_string(string temple_str)
 				auto inbetween_delims = temple_str[oDelim.toString().length .. cDelimPos.pos];
 				if(oDelim.isStr())
 				{
+					push_linenum();
 					push_line(`__buff.put(to!string((` ~ inbetween_delims ~ `)));`);
 					if(cDelim == CloseDelim.CloseShort)
 					{
+						push_linenum();
 						push_line(`__buff.put("\n");`);
 					}
 				}
@@ -144,11 +156,15 @@ string gen_temple_func_string(string temple_str)
 			else
 			{
 				//Delim is somewhere in the string
+				push_linenum();
 				push_line(`__buff.put("` ~ temple_str[0..oDelimPos.pos] ~ `");`);
 				prevTempl.munchHeadOf(temple_str, oDelimPos.pos);
 			}
 		}
 
+		// Count the number of newlines in the previous part of the template;
+		// that's the current line number
+		line_number = prevTempl.count('\n');
 	}
 
 	outdent();
@@ -159,12 +175,17 @@ string gen_temple_func_string(string temple_str)
 	return function_str;
 }
 
+template Temple(string template_string, string temple_name)
+{
+	//pragma(msg, gen_temple_func_string(template_string, temple_name));
+	mixin(gen_temple_func_string(template_string, temple_name));
+	#line 182 "src/temple/temple.d"
+}
+
 template Temple(string template_string)
 {
-	#line 1 "Temple"
 	mixin(gen_temple_func_string(template_string));
-	#line 166 "src/temple/temple.d"
-	static assert(__LINE__ == 166);
+	#line 188 "src/temple/temple.d"
 }
 
 alias TempleFuncType = typeof(Temple!"");
@@ -172,7 +193,7 @@ alias TempleFuncType = typeof(Temple!"");
 template TempleFile(string template_file)
 {
 	pragma(msg, "Compiling ", template_file, "...");
-	alias TempleFile = Temple!(import(template_file));
+	alias TempleFile = Temple!(import(template_file), template_file);
 }
 
 template TempleLayout(string template_string)
@@ -483,4 +504,11 @@ unittest
 
 	render(accum, context);
 	assert(accum.data == "Hello, world");
+}
+
+unittest
+{
+	// Uncomment to view the line numbers inserted into the template
+	//alias render = TempleFile!"test7_error.emd";
+	assert(!__traits(compiles, TempleFile!"test7_error.emd"));
 }

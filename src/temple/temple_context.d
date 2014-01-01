@@ -73,13 +73,15 @@ public:
 
 	static string renderWith(string file)(TempleContext ctx = null)
 	{
+		alias render_func = TempleFile!(file);
+
 		if(ctx is null)
 		{
 			ctx = new TempleContext();
 		}
-
-		alias render_func = TempleFile!(file);
 		auto buff = new AppenderOutputStream();
+		scope(exit) { buff.clear(); }
+
 		render_func(buff, ctx);
 		return buff.data();
 	}
