@@ -131,6 +131,31 @@ Yep, gonna bort
 Temple is written in: D
 ```
 
+Variables can also be accessed directly via the dot operator, much like
+setting them.
+
+```d
+auto context = new TempleContext();
+context.foo = "Foo!";
+context.bar = 10;
+```
+
+```erb
+<%= var.foo %>
+<%= var.bar %>
+
+<% var.baz = true; %>
+<%= var.baz %>
+}
+```
+
+Prints:
+```
+Foo!
+10
+true
+```
+
 For more information, see the Variant documentation on [the dlang website](http://dlang.org/phobos/std_variant.html)
 
 The Temple Template
@@ -246,28 +271,46 @@ Rendering `a.emd` would result in:
 Yielding, Layouts, and Partials
 -------------------------------
 
-`yield`, when called inside the template of a Temple, will render the current context's partial
-in its place, if the context has a partial to render. TempleLayout provides a shortcut
-to setting up a `TempleContext` with a partial:
+A `TemplateContext`'s `partial` field can be assigned to a Temple function. If
+`yield` is called inside of a template, then the TemplateContext's partial will be
+rendered and inserted in place of the `yield` call. If no `partial` is present
+in the context, then an empty string will be inserted instead.
+
+```d
+void main()
+{
+	alias render = Temple!"before <%= yield %> after";
+	alias inner  = Temple!"between";
+	auto accum = new AppenderOutputStream();
+	auto context = new TempleContext();
+
+	context.partial = &inner;
+
+	render(accum, context);
+	writeln(accum.data);
+}
+```
+```
+before between after
+```
+
+TempleLayout provides a shortcut to setting up a `TempleContext` with a partial
+An optional context can be passed to layout, which will also be passed to any
+nested partials.
 
 ```d
 void main()
 {
 	alias layout = TempleLayout!`before <%= yield %> after`;
-	alias partial = Temple!`foo: <%= var("foo") %>`;
+	alias partial = Temple!`between`;
 	auto accum = new AppenderOutputStream();
 
-	auto context = new TempleContext();
-	context.foo = "bar";
-
-	// An optional context can be passed to layout
-	layout(accum, &partial, context);
-	writeln(accum);
+	layout(accum, &partial);
+	writeln(accum.data);
 }
 ```
-Prints:
 ```
-before foo: bar after
+before between after
 ```
 
 And, for completeness, `TempleLayoutFile` exists for loading a template directly
