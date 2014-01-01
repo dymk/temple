@@ -59,23 +59,44 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 		push_line(`#line ` ~ (line_number + 1).to!string ~ ` "` ~ temple_name ~ `"`);
 	}
 
+	void push_string_literal(string str)
+	{
+		push_line(`__buff.put("` ~ str.escapeQuotes() ~ `");`);
+	}
+
 	void indent()  { indent_level++; }
 	void outdent() { indent_level--; }
 
 	push_line(`void Temple(OutputStream __buff, TempleContext __context = null) {`);
 	//push_line(`{`);
-	indent();
-	push_line(
-	q{
-		if(__context is null)
-		{
-			__context = new TempleContext();
-		}
+	//indent();
+	push_line(q{
+	if(__context is null)
+	{
+		__context = new TempleContext();
+	}
 
-		import std.conv : to;
-		__buff.put("");
+	OutputStream[] __buffers;
+	void __pushBuff(OutputStream __new_buff)
+	{
+		__buffers ~= __buff;
+		__buff = __new_buff;
+	}
+
+	void __popBuff()
+	{
+		__buff = __buffers[$-1];
+		__buffers.length--;
+	}
+
+	__context.pushTemplateHooks(&__pushBuff, &__popBuff);
+	scope(exit) { __context.popTemplateHooks(); }
+
+	import std.conv : to;
+	__buff.put("");
 	});
 
+	indent();
 	push_line(`with(__context) {`);
 	indent();
 
@@ -94,7 +115,7 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 		{
 			//No more delims; append the rest as a string
 			push_linenum();
-			push_line(`__buff.put("` ~ temple_str.escapeQuotes() ~ `");`);
+			push_string_literal(temple_str);
 			prevTempl.munchHeadOf(temple_str, temple_str.length);
 		}
 		else
@@ -157,8 +178,9 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 			{
 				//Delim is somewhere in the string
 				push_linenum();
-				push_line(`__buff.put("` ~ temple_str[0..oDelimPos.pos] ~ `");`);
-				prevTempl.munchHeadOf(temple_str, oDelimPos.pos);
+				immutable delim_pos = oDelimPos.pos;
+				push_string_literal(temple_str[0..delim_pos]);
+				prevTempl.munchHeadOf(temple_str, delim_pos);
 			}
 		}
 
@@ -184,6 +206,7 @@ template Temple(string template_string, string temple_name)
 
 template Temple(string template_string)
 {
+	//pragma(msg, gen_temple_func_string(template_string));
 	mixin(gen_temple_func_string(template_string));
 	#line 188 "src/temple/temple.d"
 }
@@ -511,4 +534,55 @@ unittest
 	// Uncomment to view the line numbers inserted into the template
 	//alias render = TempleFile!"test7_error.emd";
 	assert(!__traits(compiles, TempleFile!"test7_error.emd"));
+}
+
+unittest
+{
+	// test captures
+	alias render = Temple!q{
+		<% auto a = capture(() { %>
+			This is captured in A
+		<% }); %>
+		<% auto b = capture(() { %>
+			This is captured in B
+		<% }); %>
+
+		B said: "<%= b %>"
+		A said: "<%= a %>"
+	};
+
+	auto accum = new AppenderOutputStream();
+	render(accum);
+
+	assert(isSameRender(accum.data, `
+		B said: "This is captured in B"
+		A said: "This is captured in A"
+	`));
+}
+
+unittest
+{
+	// Nested captures
+	alias render = Temple!q{
+		<% auto outer = capture(() { %>
+			Outer, first
+			<% auto inner = capture(() { %>
+				Inner, first
+			<% }); %>
+			Outer, second
+
+			<%= inner %>
+		<% }); %>
+
+		<%= outer %>
+	};
+
+	auto accum = new AppenderOutputStream();
+	render(accum);
+
+	assert(isSameRender(accum.data, `
+		Outer, first
+		Outer, second
+			Inner, first
+	`));
 }

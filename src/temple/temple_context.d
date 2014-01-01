@@ -23,16 +23,57 @@ import temple.temple;
 import temple.output_stream;
 
 public import std.variant : Variant;
-private import std.array, std.string;
+private import std.array, std.string, std.typetuple;
 
 class TempleContext
 {
 private:
+	// First hook is called to set the output buffer, the second is to unset it.
+	alias TemplateHooks = TypeTuple!(void delegate(OutputStream), void delegate());
+	TemplateHooks[0][] pushBuffHooks;
+	TemplateHooks[1][] popBuffHooks;
+
 	Variant[string] vars;
 
 	TempleFuncType* yielded_template;
 
+
+	TemplateHooks[0] getPushBuffHook()
+	{
+		return pushBuffHooks[$-1];
+	}
+
+	TemplateHooks[1] getPopBuffHook()
+	{
+		return popBuffHooks[$-1];
+	}
+
 public:
+	/// private
+	void popTemplateHooks()
+	{
+		pushBuffHooks.length--;
+		popBuffHooks.length--;
+	}
+
+	/// private
+	void pushTemplateHooks(TemplateHooks h)
+	{
+		this.pushBuffHooks ~= h[0];
+		this.popBuffHooks ~= h[1];
+	}
+
+	string capture(void delegate() block)
+	{
+		auto buffer = new AppenderOutputStream();
+		scope(exit) { buffer.clear(); }
+
+		this.getPushBuffHook()(buffer);
+		block();
+		this.getPopBuffHook()();
+		return buffer.data;
+	}
+
 	void partial(TempleFuncType* temple_func) @property
 	{
 		yielded_template = temple_func;

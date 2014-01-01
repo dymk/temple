@@ -10,7 +10,7 @@ is zero overhead interpreting templates at runtime, allowing for very fast templ
 rendering.
 
 Temple supports passing any number of variables to templates, as well as rendering
-nested templates within each other.
+nested templates within each other, and capturing blocks of template code.
 
 [Vibe.d](http://vibed.org/) compatible! `OutputStream` is implemented by vibe.d's
 connections, so just pass your `TCPConnection` or `HTTPServerResponse` where the
@@ -315,6 +315,35 @@ before between after
 
 And, for completeness, `TempleLayoutFile` exists for loading a template directly
 from a file.
+
+Capture Blocks
+--------------
+
+Blocks of template can be captured into a variable, by wrapping the desired
+code inside of a delegate, and passing that to `capture`. Capture blocks
+can be nested. Example:
+
+```d
+<% auto outer = capture(() { %>
+	Outer, first
+	<% auto inner = capture(() { %>
+		Inner, first
+	<% }); %>
+	Outer, second
+
+	<%= inner %>
+<% }); %>
+
+<%= outer %>
+```
+
+```
+Outer, first
+Outer, second
+	Inner, first
+```
+
+Planned for capture blocks: Named capture groups, a-la Rails' `content_for` helper.
 
 Example
 -------
