@@ -163,8 +163,8 @@ template Temple(string template_string)
 {
 	#line 1 "Temple"
 	mixin(gen_temple_func_string(template_string));
-	#line 164 "src/temple/temple.d"
-	static assert(__LINE__ == 164);
+	#line 166 "src/temple/temple.d"
+	static assert(__LINE__ == 166);
 }
 
 package alias TempleFunc = typeof(Temple!"");
