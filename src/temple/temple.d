@@ -167,7 +167,7 @@ template Temple(string template_string)
 	static assert(__LINE__ == 166);
 }
 
-package alias TempleFunc = typeof(Temple!"");
+alias TempleFuncType = typeof(Temple!"");
 
 template TempleFile(string template_file)
 {
@@ -189,7 +189,7 @@ template TempleLayoutFile(string template_file)
 
 void TempleLayoutImpl(alias layout_renderer)(
 	OutputStream buff,
-	TempleFunc* temple_func,
+	TempleFuncType* temple_func,
 	TempleContext context = null)
 {
 	if(context is null)

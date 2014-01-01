@@ -1,4 +1,4 @@
-Temple
+Temple [![Build Status](https://travis-ci.org/dymk/temple.png?branch=master)](https://travis-ci.org/dymk/temple)
 ======
 A Compile Time, Zero Overhead, Embedded Template Engine for D
 

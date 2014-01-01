@@ -30,10 +30,10 @@ class TempleContext
 private:
 	Variant[string] vars;
 
-	TempleFunc* yielded_template;
+	TempleFuncType* yielded_template;
 
 public:
-	void partial(TempleFunc* temple_func) @property
+	void partial(TempleFuncType* temple_func) @property
 	{
 		yielded_template = temple_func;
 	}
