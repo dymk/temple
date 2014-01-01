@@ -187,7 +187,7 @@ template TempleLayoutFile(string template_file)
 	alias TempleLayoutFile = TempleLayoutImpl!layout_renderer;
 }
 
-private void TempleLayoutImpl(alias layout_renderer)(
+void TempleLayoutImpl(alias layout_renderer)(
 	OutputStream buff,
 	TempleFunc* temple_func,
 	TempleContext context = null)
@@ -470,4 +470,17 @@ unittest
 
 	layout(accum, &partial, context);
 	assert(isSameRender(accum.data, readText("test/test6_partial.emd.txt")));
+}
+
+// opDispatch variable getting
+unittest
+{
+	alias render = Temple!"<%= var.foo %>";
+	auto accum = new AppenderOutputStream();
+	auto context = new TempleContext();
+
+	context.foo = "Hello, world";
+
+	render(accum, context);
+	assert(accum.data == "Hello, world");
 }

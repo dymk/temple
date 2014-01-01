@@ -43,6 +43,24 @@ public:
 		return yielded_template;
 	}
 
+	bool isSet(string name)
+	{
+		return (name in vars && vars[name] != Variant());
+	}
+
+	ref Variant var(string name) @property
+	{
+		if(name !in vars)
+			vars[name] = Variant();
+
+		return vars[name];
+	}
+
+	VarDispatcher var() @property
+	{
+		return VarDispatcher(this);
+	}
+
 	Variant opDispatch(string op)() @property
 	{
 		return vars[op];
@@ -51,19 +69,6 @@ public:
 	void opDispatch(string op, T)(T other) @property
 	{
 		vars[op] = other;
-	}
-
-	bool isSet(string name)
-	{
-		return (name in vars && vars[name] != Variant());
-	}
-
-	ref Variant var(string name)
-	{
-		if(name !in vars)
-			vars[name] = Variant();
-
-		return vars[name];
 	}
 
 	static string renderWith(string file)(TempleContext ctx = null)
@@ -98,5 +103,43 @@ public:
 			(*yielded_template)(buff, this);
 			return buff.data;
 		}
+	}
+}
+
+private struct VarDispatcher
+{
+private:
+	TempleContext context;
+
+public:
+	this(TempleContext context)
+	{
+		this.context = context;
+	}
+
+	ref Variant opDispatch(string op)() @property
+	{
+		return context.var(op);
+	}
+
+	void opDispatch(string op, T)(T other) @property
+	{
+		context.var(op) = other;
+	}
+}
+
+unittest
+{
+	auto context = new TempleContext();
+	context.foo = "bar";
+	context.bar = 10;
+
+	with(context)
+	{
+		assert(var.foo == "bar");
+		assert(var.bar == 10);
+
+		var.baz = true;
+		assert(var.baz == true);
 	}
 }
