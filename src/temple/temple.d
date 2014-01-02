@@ -351,6 +351,25 @@ void TempleLayoutImpl(alias layout_renderer)(
 
 alias TempleLayoutFuncType = typeof(TempleLayoutImpl!(Temple!""));
 
+/**
+ * Helper functions for quicly rendering a template as a string
+ */
+
+string templeToString(TempleFuncType* func, TempleContext context = null)
+{
+	auto accum = new AppenderOutputStream;
+	(*func)(accum, context);
+	return accum.data;
+}
+
+string templeToString(TempleLayoutFuncType* layout, TempleFuncType* partial, TempleContext context = null)
+{
+	auto accum = new AppenderOutputStream;
+	(*layout)(accum, partial, context);
+	return accum.data;
+}
+
+
 version(unittest)
 {
 	private import std.stdio, std.file : readText;
@@ -733,4 +752,79 @@ unittest
 			a, captured
 			directly printed from a nested capture
 			b, captured`));
+}
+
+/**
+ * Test CTFE compatibility
+ */
+unittest
+{
+	alias render = Temple!q{ <%= "foo" %> };
+	const result = templeToString(&render);
+	static assert(isSameRender(result, "foo"));
+}
+
+unittest
+{
+	alias render = Temple!q{
+		<% if(true) { %>
+			Bort
+		<% } else { %>
+			No bort!
+		<% } %>
+
+		<% auto a = capture(() { %>
+			inside a capture block
+		<% }); %>
+
+		Before capture
+		<%= a %>
+		After capture
+	};
+
+	const result = templeToString(&render);
+	static assert(isSameRender(result, `
+		Bort
+		Before capture
+		inside a capture block
+		After capture
+	`));
+}
+
+// std.variant needs to be made CTFE compatible
+version(none)
+unittest
+{
+	alias render = Temple!q{
+		Name: <%= var.name %>
+		Number: <%= var.number %>
+
+		<% auto captured = capture(() { %>
+			Here is some captured content!
+			var.name: <%= var.name %>
+		<% }); %>
+		<%= captured %>
+
+		<%= capture(() { %>
+			A capture directly being rendered, for completeness.
+		<% }); %>
+	};
+
+	// The lambda is a hack to set up a temple context
+	// at compile time, using a self executing function literal
+
+	const result = templeToString(&render, (() {
+		auto ctx = new TempleContext;
+		ctx.name = "dymk";
+		ctx.number = 1234;
+		return ctx;
+	})() );
+
+	static assert(isSameRender(result, `
+		Name: dymk
+		Number: 1234
+			Here is some captured content!
+			var.name: dymk
+		A capture directly being rendered, for completeness.
+	`));
 }

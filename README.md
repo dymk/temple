@@ -447,12 +447,54 @@ Renders:
 </form>
 ```
 
+Compile Time Compile Time Templates
+-----------------------------------
 
-Example
--------
+Some templates can be further evaluated into static strings at compile time if
+they contain code that is, itself, CTFE compatible. This, unfortunaly, does
+not include templates that take a TemplateContext, due to std.variant.Variant
+being incompatible with CTFE. This restriction may be lifted in the future.
+
+For now, templates such as this can be CTFE'd into static strings. `templeToString` is
+provided as a shortcut for allocating an `AppenderOutputStream`, rendering the template with it, and
+returning the appender's buffer:
+
+```d
+unittest
+{
+	alias render = Temple!q{
+		<% if(true) { %>
+			Bort
+		<% } else { %>
+			No bort!
+		<% } %>
+
+		<% auto a = capture(() { %>
+			inside a capture block
+		<% }); %>
+
+		Before capture
+		<%= a %>
+		After capture
+	};
+
+	const string result = templeToString(&render);
+
+	// Note static assert; result was computed at compile time
+	static assert(isSameRender(result, `
+		Bort
+		Before capture
+		inside a capture block
+		After capture
+	`));
+}
+```
+
+Example: Simple Webpages
+------------------------
 
 Here's a slightly more complex example, demonstrating how to use the library
-to render HTML templates inside of a common layout
+to render HTML templates inside of a common layout.
 
 ```d
 void main()

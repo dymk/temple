@@ -63,7 +63,7 @@ else
 
 class AppenderOutputStream : OutputStream
 {
-	import std.array : Appender;
+	import std.array;
 
 	Appender!string accum;
 
@@ -79,7 +79,15 @@ class AppenderOutputStream : OutputStream
 
 	void clear()
 	{
-		accum.clear();
+		if(__ctfe)
+		{
+			// Screw memory usage! We're a compiler!
+			accum = appender!string;
+		}
+		else
+		{
+			accum.clear();
+		}
 	}
 
 	version(Have_vibe_d)
