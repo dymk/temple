@@ -35,7 +35,7 @@ import
   std.range,
   std.string;
 
-string gen_temple_func_string(string temple_str, string temple_name = "InlineTemplate")
+string gen_temple_func_string(string temple_str, string temple_name, string filter_policy_ident = "")
 {
 	auto function_str = "";
 	auto indent_level = 0;
@@ -111,41 +111,69 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 		return will_be_printed;
 	}
 
-	//string peekTmpBufferVar()
-	//{
-	//	return tmp_buffer_var_names[$-1];
-	//}
-
-	push_line(`static void Temple(OutputStream __buff, TempleContext __context = null) {`);
+	string function_type_params = "";
+	if(filter_policy_ident.length)
+	{
+		function_type_params = "(%s)".format(filter_policy_ident);
+	}
+	push_line(`static void TempleFunc%s(OutputStream __buff, TempleContext __context = null) {`.format(function_type_params));
 	//push_line(`{`);
 	//indent();
+
+	if(filter_policy_ident.length)
+	{
+		push_line(q{
+			void __buffFilteredPut(T)(T thing)
+			{
+				__buff.put(%s.templeFilter(thing));
+			}
+		}.format(filter_policy_ident));
+	}
+	else
+	{
+		push_line(q{
+			void __buffFilteredPut(T)(T thing)
+			{
+				import std.conv : to;
+				__buff.put(thing.to!string);
+			}
+		});
+	}
+
 	push_line(q{
-	if(__context is null)
-	{
-		__context = new TempleContext();
-	}
 
-	OutputStream[] __buffers;
-	void __pushBuff(OutputStream __new_buff)
-	{
-		__buffers ~= __buff;
-		__buff = __new_buff;
-	}
+		if(__context is null)
+		{
+			__context = new TempleContext();
+		}
 
-	void __popBuff()
-	{
-		__buff = __buffers[$-1];
-		__buffers.length--;
-	}
+		OutputStream[] __buffers;
+		void __pushBuff(OutputStream __new_buff)
+		{
+			__buffers ~= __buff;
+			__buff = __new_buff;
+		}
 
-	__context.pushTemplateHooks(&__pushBuff, &__popBuff);
-	scope(exit) { __context.popTemplateHooks(); }
+		void __popBuff()
+		{
+			__buff = __buffers[$-1];
+			__buffers.length--;
+		}
 
-	import std.conv : to;
-	__buff.put("");
+		__context.pushTemplateHooks(&__pushBuff, &__popBuff);
+		scope(exit) { __context.popTemplateHooks(); }
+
+		import std.conv : to;
+		__buff.put("");
+
 	});
 
 	indent();
+	if(filter_policy_ident.length)
+	{
+		push_line(`with(%s) {`.format(filter_policy_ident));
+		indent();
+	}
 	push_line(`with(__context) {`);
 	indent();
 
@@ -236,10 +264,10 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 					}
 					else
 					{
-						push_line(`__buff.put(to!string(` ~ inbetween_delims ~ `));`);
+						push_line(`__buffFilteredPut(` ~ inbetween_delims ~ `);`);
 						if(cDelim == CloseDelim.CloseShort)
 						{
-							push_line(`__buff.put("\n");`);
+							push_line(`__buffFilteredPut("\n");`);
 						}
 					}
 				}
@@ -291,25 +319,52 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 	push_line("}");
 	outdent();
 	push_line("}");
+	if(filter_policy_ident.length)
+	{
+		outdent();
+		push_line("}");
+	}
 
 	return function_str;
 }
 
-template Temple(string template_string, string temple_name)
+template Temple(
+	string template_string,
+	string temple_name = "InlineTemplate")
 {
-	//pragma(msg, gen_temple_func_string(template_string, temple_name));
-	mixin(gen_temple_func_string(template_string, temple_name));
-	#line 303 "src/temple/temple.d"
+	const temple_fun_str = gen_temple_func_string(
+		template_string,
+		temple_name);
+	//pragma(msg, temple_fun_str);
+
+	#line 1 "TempleFunc"
+	mixin(temple_fun_str);
+	#line 343 "src/temple/temple.d"
+
+	alias Temple = TempleFunc;
 }
 
-template Temple(string template_string)
+template Temple(
+	__FilterPolicy,
+	string template_string,
+	string temple_name = "InlineTemplate")
 {
-	//pragma(msg, gen_temple_func_string(template_string));
-	mixin(gen_temple_func_string(template_string));
-	#line 310 "src/temple/temple.d"
+	static assert(!is(__FilterPolicy == void), "FilterPolicy can't be void");
+
+	const temple_fun_str = gen_temple_func_string(
+		template_string,
+		temple_name,
+		"__FilterPolicy");
+	//pragma(msg, temple_fun_str);
+
+	#line 1 "TempleFunc"
+	mixin(temple_fun_str);
+	#line 363 "src/temple/temple.d"
+
+	alias Temple = TempleFunc!__FilterPolicy;
 }
 
-alias TempleFuncType = typeof(Temple!"");
+alias TempleFuncType = typeof(Temple!("", ""));
 
 template TempleFile(string template_file)
 {
@@ -349,7 +404,7 @@ void TempleLayoutImpl(alias layout_renderer)(
 	layout_renderer(buff, context);
 }
 
-alias TempleLayoutFuncType = typeof(TempleLayoutImpl!(Temple!""));
+alias TempleLayoutFuncType = typeof(TempleLayoutImpl!(Temple!("", "")));
 
 /**
  * Helper functions for quicly rendering a template as a string
@@ -748,40 +803,113 @@ unittest
 	`));
 }
 
-// std.variant needs to be made CTFE compatible
-version(none)
+//// std.variant needs to be made CTFE compatible
+//version(none)
+//unittest
+//{
+//	alias render = Temple!q{
+//		Name: <%= var.name %>
+//		Number: <%= var.number %>
+
+//		<% auto captured = capture(() { %>
+//			Here is some captured content!
+//			var.name: <%= var.name %>
+//		<% }); %>
+//		<%= captured %>
+
+//		<%= capture(() { %>
+//			A capture directly being rendered, for completeness.
+//		<% }); %>
+//	};
+
+//	// The lambda is a hack to set up a temple context
+//	// at compile time, using a self executing function literal
+
+//	const result = templeToString(&render, (() {
+//		auto ctx = new TempleContext;
+//		ctx.name = "dymk";
+//		ctx.number = 1234;
+//		return ctx;
+//	})() );
+
+//	static assert(isSameRender(result, `
+//		Name: dymk
+//		Number: 1234
+//			Here is some captured content!
+//			var.name: dymk
+//		A capture directly being rendered, for completeness.
+//	`));
+//}
+
 unittest
 {
-	alias render = Temple!q{
-		Name: <%= var.name %>
-		Number: <%= var.number %>
+	static struct FilterPolicy
+	{
+		static struct TaintedString
+		{
+			string value;
+			bool clean = false;
+		}
 
-		<% auto captured = capture(() { %>
-			Here is some captured content!
-			var.name: <%= var.name %>
-		<% }); %>
-		<%= captured %>
+		static string templeFilter(TaintedString ts)
+		{
+			if(ts.clean)
+			{
+				return ts.value;
+			}
+			else
+			{
+				return "!" ~ ts.value ~ "!";
+			}
+		}
+
+		static string templeFilter(string str)
+		{
+			return templeFilter(TaintedString(str));
+		}
+
+		static TaintedString safe(string str)
+		{
+			return TaintedString(str, true);
+		}
+	}
+
+	alias render1 = Temple!(FilterPolicy, q{
+		foo (filtered):   <%= "mark me" %>
+		foo (unfiltered): <%= safe("don't mark me") %>
+	});
+
+	assert(isSameRender(templeToString(&render1), `
+		foo (filtered):   !mark me!
+		foo (unfiltered): don't mark me
+	`));
+
+	alias render2 = Temple!(FilterPolicy, q{
+		<%
+		auto helper1(void delegate() block)
+		{
+			return "a " ~ capture(block) ~ " b";
+		}
+		%>
 
 		<%= capture(() { %>
-			A capture directly being rendered, for completeness.
+			foo1
+			<%= "foo2" %>
 		<% }); %>
-	};
 
-	// The lambda is a hack to set up a temple context
-	// at compile time, using a self executing function literal
+		<%= helper1(() { %>
+			<%= "foo3" %>
+		<% }); %>
 
-	const result = templeToString(&render, (() {
-		auto ctx = new TempleContext;
-		ctx.name = "dymk";
-		ctx.number = 1234;
-		return ctx;
-	})() );
+		<%= helper1(() { %>
+			<%= safe("foo4") %>
+		<% }); %>
+	});
 
-	static assert(isSameRender(result, `
-		Name: dymk
-		Number: 1234
-			Here is some captured content!
-			var.name: dymk
-		A capture directly being rendered, for completeness.
+	assert(isSameRender(templeToString(&render2), `
+		foo1
+		!foo2!
+		a !foo3! b
+		a foo4 b
 	`));
 }
