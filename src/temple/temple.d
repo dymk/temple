@@ -116,7 +116,7 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 	//	return tmp_buffer_var_names[$-1];
 	//}
 
-	push_line(`void Temple(OutputStream __buff, TempleContext __context = null) {`);
+	push_line(`static void Temple(OutputStream __buff, TempleContext __context = null) {`);
 	//push_line(`{`);
 	//indent();
 	push_line(q{
@@ -404,27 +404,21 @@ unittest
 unittest
 {
 	//Test to!string of eval delimers
-	alias render = Temple!(`<%= "foo" %>`);
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(accum.data == "foo");
+	alias render = Temple!`<%= "foo" %>`;
+	assert(templeToString(&render) == "foo");
 }
 
 unittest
 {
 	// Test delimer parsing
 	alias render = Temple!("<% if(true) { %>foo<% } %>");
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(accum.data == "foo");
+	assert(templeToString(&render) == "foo");
 }
 unittest
 {
 	//Test raw text with no delimers
 	alias render = Temple!(`foo`);
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(accum.data == "foo");
+	assert(templeToString(&render) == "foo");
 }
 
 unittest
@@ -432,9 +426,7 @@ unittest
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %>foo<% } %>`;
 	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(accum.data == "foofoofoo");
+	assert(templeToString(&render) == "foofoofoo");
 }
 
 unittest
@@ -442,9 +434,7 @@ unittest
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %><%= i %><% } %>`;
 	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(accum.data == "012");
+	assert(templeToString(&render) == "012");
 }
 
 unittest
@@ -452,9 +442,7 @@ unittest
 	//Test escaping of "
 	const templ = `"`;
 	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(accum.data == `"`);
+	assert(templeToString(&render) == `"`);
 }
 
 unittest
@@ -462,17 +450,13 @@ unittest
 	//Test escaping of '
 	const templ = `'`;
 	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(accum.data == `'`);
+	assert(templeToString(&render) == `'`);
 }
 
 unittest
 {
 	alias render = Temple!`"%"`;
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(accum.data == `"%"`);
+	assert(templeToString(&render) == `"%"`);
 }
 
 unittest
@@ -484,9 +468,7 @@ unittest
 		% }
 	`;
 	alias render = Temple!(templ);
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(isSameRender(accum.data, "Hello!"));
+	assert(isSameRender(templeToString(&render), "Hello!"));
 }
 
 unittest
@@ -498,91 +480,69 @@ unittest
 		% }
 	`;
 	alias render = Temple!(templ);
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(isSameRender(accum.data, "foo"));
+	assert(isSameRender(templeToString(&render), "foo"));
 }
 unittest
 {
 	// Test shorthand only after newline
 	const templ = `foo%bar`;
 	alias render = Temple!(templ);
-	auto accum = new AppenderOutputStream;
-	render(accum);
-	assert(accum.data == "foo%bar");
+	assert(templeToString(&render) == "foo%bar");
 }
 
 unittest
 {
 	// Ditto
-	const templ = `<%= "foo%bar" %>`;
-	alias render = Temple!(templ);
-	auto accum = new AppenderOutputStream;
-
-	render(accum);
-	assert(accum.data == "foo%bar");
+	alias render = Temple!`<%= "foo%bar" %>`;
+	assert(templeToString(&render) == "foo%bar");
 }
 
 unittest
 {
-	auto params = new TempleContext();
-	params.foo = 123;
-	params.bar = "test";
+	auto context = new TempleContext();
+	context.foo = 123;
+	context.bar = "test";
 
-	const templ = `<%= var("foo") %> <%= var("bar") %>`;
-	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream;
-
-	render(accum, params);
-	assert(accum.data == "123 test");
+	alias render = Temple!`<%= var("foo") %> <%= var("bar") %>`;
+	assert(templeToString(&render, context) == "123 test");
 }
 
 unittest
 {
 	// Loading templates from a file
 	alias render = TempleFile!"test1.emd";
-	auto accum = new AppenderOutputStream;
 	auto compare = readText("test/test1.emd.txt");
-
-	render(accum);
-	assert(isSameRender(accum.data, compare));
+	assert(isSameRender(templeToString(&render), compare));
 }
 
 unittest
 {
 	alias render = TempleFile!"test2.emd";
 	auto compare = readText("test/test2.emd.txt");
-	auto accum = new AppenderOutputStream;
 
 	auto ctx = new TempleContext();
 	ctx.name = "dymk";
 	ctx.will_work = true;
 
-	render(accum, ctx);
-	assert(isSameRender(accum.data, compare));
+	assert(isSameRender(templeToString(&render, ctx), compare));
 }
 
 unittest
 {
 	alias render = TempleFile!"test3_nester.emd";
 	auto compare = readText("test/test3.emd.txt");
-	auto accum = new AppenderOutputStream;
-
-	render(accum);
-	assert(isSameRender(accum.data, compare));
+	assert(isSameRender(templeToString(&render), compare));
 }
 
 unittest
 {
 	alias render = TempleFile!"test4_root.emd";
 	auto compare = readText("test/test4.emd.txt");
-	auto accum = new AppenderOutputStream;
 
 	auto ctx = new TempleContext();
 	ctx.var1 = "this_is_var1";
 
-	render(accum, ctx);
-	assert(isSameRender(accum.data, compare));
+	assert(isSameRender(templeToString(&render, ctx), compare));
 }
 
 unittest
@@ -716,10 +676,7 @@ unittest
 unittest
 {
 	alias render = TempleFile!"test8_building_helpers.emd";
-	auto accum = new AppenderOutputStream;
-
-	render(accum);
-	assert(isSameRender(accum.data, readText("test/test8_building_helpers.emd.txt")));
+	assert(isSameRender(templeToString(&render), readText("test/test8_building_helpers.emd.txt")));
 }
 
 unittest
