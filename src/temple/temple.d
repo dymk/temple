@@ -32,7 +32,8 @@ import
   std.exception,
   std.conv,
   std.algorithm,
-  std.range;
+  std.range,
+  std.string;
 
 string gen_temple_func_string(string temple_str, string temple_name = "InlineTemplate")
 {
@@ -298,14 +299,14 @@ template Temple(string template_string, string temple_name)
 {
 	//pragma(msg, gen_temple_func_string(template_string, temple_name));
 	mixin(gen_temple_func_string(template_string, temple_name));
-	#line 205 "src/temple/temple.d"
+	#line 303 "src/temple/temple.d"
 }
 
 template Temple(string template_string)
 {
 	//pragma(msg, gen_temple_func_string(template_string));
 	mixin(gen_temple_func_string(template_string));
-	#line 212 "src/temple/temple.d"
+	#line 310 "src/temple/temple.d"
 }
 
 alias TempleFuncType = typeof(Temple!"");
@@ -348,9 +349,11 @@ void TempleLayoutImpl(alias layout_renderer)(
 	layout_renderer(buff, context);
 }
 
+alias TempleLayoutFuncType = typeof(TempleLayoutImpl!(Temple!""));
+
 version(unittest)
 {
-	private import std.string, std.stdio, std.file : readText;
+	private import std.stdio, std.file : readText;
 
 	bool isSameRender(string r1, string r2)
 	{
