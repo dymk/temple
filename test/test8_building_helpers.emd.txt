@@ -1,0 +1,11 @@
+<form action="/shorten" method="POST">
+	Shorten a URL:
+	<input type="text" name="url" />
+	<input type="button" value="Shorten URL" />
+</form>
+
+<form action="/person" method="POST">
+	Name: <input type="text" name="person[name]" />
+	Age: <input type="text" name="person[age]" />
+	DOB: <input type="date" name="person[date_of_birth]" />
+</form>

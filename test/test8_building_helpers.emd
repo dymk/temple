@@ -1,0 +1,47 @@
+<%
+import std.string;
+struct FormHelper
+{
+	string model_name;
+
+	auto field_for(string field_name, string type="text")
+	{
+		if(model_name != "")
+		{
+			field_name = "%s[%s]".format(model_name, field_name);
+		}
+
+		return `<input type="%s" name="%s" />`.format(type, field_name);
+	}
+
+	auto submit(string value = "Submit")
+	{
+		return `<input type="button" value="%s" />`.format(value);
+	}
+}
+
+auto form_for(
+	string action,
+	string name,
+	void delegate(FormHelper) block)
+{
+	auto form_body = capture(block, FormHelper(name));
+	return q{
+		<form action="%s" method="POST">
+			%s
+		</form>
+	}.format(action, form_body);
+}
+%>
+
+<%= form_for("/shorten", "", (f) { %>
+	Shorten a URL:
+	<%= f.field_for("url") %>
+	<%= f.submit("Shorten URL") %>
+<% }); %>
+
+<%= form_for("/person", "person", (f) { %>
+	Name: <%= f.field_for("name") %>
+	Age: <%= f.field_for("age") %>
+	DOB: <%= f.field_for("date_of_birth", "date") %>
+<% }); %>

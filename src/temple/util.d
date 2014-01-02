@@ -37,7 +37,8 @@ bool validBeforeShort(string str) {
 	return true;
 }
 
-unittest {
+unittest
+{
 	static assert("   ".validBeforeShort() == true);
 	static assert(" \t".validBeforeShort() == true);
 	static assert("foo\n".validBeforeShort() == true);
@@ -55,14 +56,16 @@ void munchHeadOf(ref string a, ref string b, size_t amt) {
 	b = b[amt..$];
 }
 
-unittest {
+unittest
+{
 	auto a = "123";
 	auto b = "abc";
 	a.munchHeadOf(b, 1);
 	assert(a == "123a");
 	assert(b == "bc");
 }
-unittest {
+unittest
+{
 	auto a = "123";
 	auto b = "abc";
 	a.munchHeadOf(b, b.length);
@@ -70,54 +73,68 @@ unittest {
 	assert(b == "");
 }
 
-DelimPos!D* nextDelim(Char1 : char, D)(const(Char1)[] haystack, const D[] delims) {
+DelimPos!(D)* nextDelim(Char1 : char, D)(const(Char1)[] haystack, const(D)[] delims)
+{
 
 	alias Tuple!(Delim, "delim", string, "str") DelimStrPair;
 
 	//auto delims_strs =      delims.map!(a => new DelimStrPair(a, a.toString()) )().array();
 	//auto delim_strs  = delims_strs.map!(a => a.str)().array();
 	DelimStrPair[] delims_strs;
-	foreach(delim; delims) {
+	foreach(delim; delims)
+	{
 		delims_strs ~= DelimStrPair(delim, toString(delim));
 	}
 
 	string[] delim_strs;
-	foreach(delim; delims) {
+	foreach(delim; delims)
+	{
 		// Would use ~= here, but CTFE in 2.063 can't handle it
 		delim_strs = delim_strs ~ toString(delim);
 	}
 
 	auto atPos = countUntilAny(haystack, delim_strs);
-	if(atPos == -1) {
+	if(atPos == -1)
+	{
 		return null;
 	}
 
 	auto sorted = delims_strs.sort!("a.str.length > b.str.length")();
-	foreach(ref s; sorted) {
-		if(startsWith(haystack[atPos..$], s.str)) {
+	foreach(ref s; sorted)
+	{
+		if(startsWith(haystack[atPos..$], s.str))
+		{
 			return new DelimPos!D(atPos, cast(D)s.delim);
 		}
 	}
-	throw new Exception("Impossible");
+	assert(false, "Internal bug");
 }
 
-unittest {
+unittest
+{
 	const haystack = Delim.Open.toString();
 	static assert(*(haystack.nextDelim([Delim.Open])) == DelimPos!Delim(0, Delim.Open));
 }
-unittest {
+unittest
+{
 	const haystack = "foo";
 	static assert(haystack.nextDelim([Delim.Open]) is null);
 }
 
-ptrdiff_t countUntilAny(Char1, StrArr)(const(Char1)[] s, StrArr subs) {
-	auto indexes_of = subs.map!((a) { return s.countUntil(cast(string)a); })();
+ptrdiff_t countUntilAny(Char1, StrArr)(const(Char1)[] haystack, StrArr subs) {
+	auto indexes_of = subs.map!( sub => haystack.countUntil(sub) );
 	ptrdiff_t min_index = -1;
-	foreach(index_of; indexes_of) {
-		if(index_of != -1) {
-			if(min_index == -1) {
+
+	foreach(index_of; indexes_of)
+	{
+		if(index_of != -1)
+		{
+			if(min_index == -1)
+			{
 				min_index = index_of;
-			} else {
+			}
+			else
+			{
 				min_index = min(min_index, index_of);
 			}
 		}
@@ -125,42 +142,95 @@ ptrdiff_t countUntilAny(Char1, StrArr)(const(Char1)[] s, StrArr subs) {
 
 	return min_index;
 }
-unittest {
+unittest
+{
 	enum a = "1, 2, 3, 4";
 	static assert(a.countUntilAny(["1", "2"]) == 0);
 	static assert(a.countUntilAny(["2", "1"]) == 0);
 	static assert(a.countUntilAny(["4", "2"]) == 3);
 }
-unittest {
+unittest
+{
 	enum a = "1, 2, 3, 4";
 	static assert(a.countUntilAny(["5", "1"]) == 0);
 	static assert(a.countUntilAny(["5", "6"]) == -1);
 }
-unittest {
+unittest
+{
 	enum a = "%>";
 	static assert(a.countUntilAny(["<%", "<%="]) == -1);
 }
 
-string escapeQuotes(string unclean) {
+string escapeQuotes(string unclean)
+{
 	unclean = unclean.replace(`"`, `\"`);
 	unclean = unclean.replace(`'`, `\'`);
 	return unclean;
 }
-unittest {
+unittest
+{
 	static assert(escapeQuotes(`"`) == `\"`);
 	static assert(escapeQuotes(`'`) == `\'`);
 }
 
-string stripWs(string unclean) {
-	return unclean.filter!(
-		(a) { return !isWhite(a); } //Filter any WS
-	)().map!(
-		(a) { return cast(char) a; } //cast back to char
-	)().array().idup;
+// Internal, inefficiant function for removing the whitespace from
+// a string (for comparing that templates generate the same output,
+// ignoring whitespace exactnes)
+package string stripWs(string unclean) {
+	return unclean
+	.filter!(a => !isWhite(a) )
+	.map!( a => cast(char) a )
+	.array
+	.idup;
 }
-unittest {
+unittest
+{
 	static assert(stripWs("") == "");
 	static assert(stripWs("    \t") == "");
 	static assert(stripWs(" a s d f ") == "asdf");
 	static assert(stripWs(" a\ns\rd f ") == "asdf");
+}
+
+package bool endsWithIgnoreWhitespace(string haystack, string needle)
+{
+	haystack = haystack.stripWs;
+	needle   = needle.stripWs;
+
+	return haystack.endsWith(needle);
+}
+
+unittest
+{
+	static assert(endsWithIgnoreWhitespace(")   {  ", "){"));
+	static assert(!endsWithIgnoreWhitespace(")   {}", "){"));
+}
+
+package bool startsWithBlockClose(string haystack)
+{
+	haystack = haystack.stripWs;
+
+	// something that looks like }<something>); passes this
+	if(haystack.startsWith("}") && haystack.canFind(");")) return true;
+	return false;
+}
+
+unittest
+{
+	static assert(startsWithBlockClose(`}, 10);`));
+	static assert(startsWithBlockClose(`});`));
+	static assert(startsWithBlockClose(`}, "foo");`));
+	static assert(startsWithBlockClose(`}); auto a = "foo";`));
+
+	static assert(!startsWithBlockClose(`if() {}`));
+	static assert(!startsWithBlockClose(`};`));
+}
+
+package bool isBlockStart(string haystack)
+{
+	return haystack.endsWithIgnoreWhitespace("){");
+}
+
+package bool isBlockEnd(string haystack)
+{
+	return haystack.startsWithBlockClose();
 }

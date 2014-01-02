@@ -63,13 +63,13 @@ public:
 		this.popBuffHooks ~= h[1];
 	}
 
-	string capture(void delegate() block)
+	string capture(T...)(void delegate(T) block, T args)
 	{
 		auto buffer = new AppenderOutputStream();
 		scope(exit) { buffer.clear(); }
 
 		this.getPushBuffHook()(buffer);
-		block();
+		block(args);
 		this.getPopBuffHook()();
 		return buffer.data;
 	}

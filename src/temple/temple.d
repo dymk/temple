@@ -36,7 +36,6 @@ import
 
 string gen_temple_func_string(string temple_str, string temple_name = "InlineTemplate")
 {
-
 	auto function_str = "";
 	auto indent_level = 0;
 	size_t line_number = 0;
@@ -61,11 +60,60 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 
 	void push_string_literal(string str)
 	{
+		if(str.length == 0)
+			return;
+
 		push_line(`__buff.put("` ~ str.escapeQuotes() ~ `");`);
 	}
 
 	void indent()  { indent_level++; }
 	void outdent() { indent_level--; }
+
+	// Generates temporary variable names for storing block contents
+	// Returns the most recently generated temporary buffer variable name
+	string[] tmp_buffer_var_names;
+	auto curr_buffer_num = 0;
+	string popTmpBufferVar()
+	{
+		auto name = tmp_buffer_var_names[$-1];
+		tmp_buffer_var_names.length--;
+		return name;
+	}
+	void pushTmpBufferVar(string name)
+	{
+		tmp_buffer_var_names ~= name;
+	}
+	string newTmpBufferVar()
+	{
+		auto name = "__buff_tmp_" ~ curr_buffer_num.to!string;
+		curr_buffer_num++;
+		pushTmpBufferVar(name);
+		return name;
+	}
+	bool hasTmpBufferVar()
+	{
+		return tmp_buffer_var_names.length != 0;
+	}
+
+	// Tracks if the block that the parser has just
+	// finished processing should be printed (e.g., is
+	// it the block who's contents are assigned to the last tmp_buffer_var)
+	bool[] printStartBlockTracker;
+	void sawBlockStart(bool will_be_printed)
+	{
+		printStartBlockTracker ~= will_be_printed;
+	}
+	bool sawBlockEnd()
+	{
+		auto will_be_printed = printStartBlockTracker[$-1];
+		printStartBlockTracker.length--;
+		return will_be_printed;
+	}
+
+	//string peekTmpBufferVar()
+	//{
+	//	return tmp_buffer_var_names[$-1];
+	//}
 
 	push_line(`void Temple(OutputStream __buff, TempleContext __context = null) {`);
 	//push_line(`{`);
@@ -125,14 +173,14 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 
 			if(oDelimPos.pos == 0)
 			{
-				// Delim is at the start of temple_str
-				if(oDelim.isShort()) {
+				if(oDelim.isShort())
+				{
 					if(!prevTempl.validBeforeShort())
 					{
-						// Chars before % were invalid, assume it's part of a
+						// Chars before % weren't all whitespace, assume it's part of a
 						// string literal.
 						push_linenum();
-						push_line(`__buff.put("` ~ temple_str[0..oDelim.toString().length] ~ `");`);
+						push_string_literal(temple_str[0..oDelim.toString().length]);
 						prevTempl.munchHeadOf(temple_str, oDelim.toString().length);
 						continue;
 					}
@@ -155,28 +203,77 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 				}
 
 				// Made it this far, we've got the position of the close delimer.
+				push_linenum();
 				auto inbetween_delims = temple_str[oDelim.toString().length .. cDelimPos.pos];
+
+				// track block starts
+				immutable bool is_block_start = inbetween_delims.isBlockStart();
+				immutable bool is_block_end   = inbetween_delims.isBlockEnd();
+				assert(!(is_block_start && is_block_end), "Internal bug: " ~ inbetween_delims);
+
+				if(is_block_start)
+				{
+					sawBlockStart(oDelim.isStr());
+				}
+
 				if(oDelim.isStr())
 				{
-					push_linenum();
-					push_line(`__buff.put(to!string((` ~ inbetween_delims ~ `)));`);
-					if(cDelim == CloseDelim.CloseShort)
+					// Check if this is a block; in that case, put the block's
+					// contents into a temporary variable, then render that
+					// variable after the block close delim
+
+					// The line would look like:
+					// <%= capture(() { %>
+					//  <% }); %>
+					// so look for something like "){" or ") {" at the end
+
+					if(is_block_start)
 					{
-						push_linenum();
-						push_line(`__buff.put("\n");`);
+						string tmp_buffer_var = newTmpBufferVar();
+						push_line(`auto %s =%s`.format(tmp_buffer_var, inbetween_delims));
+						indent();
+					}
+					else
+					{
+						push_line(`__buff.put(to!string(` ~ inbetween_delims ~ `));`);
+						if(cDelim == CloseDelim.CloseShort)
+						{
+							push_line(`__buff.put("\n");`);
+						}
 					}
 				}
 				else
 				{
+					// It's just raw code, push it into the function body
 					push_line(inbetween_delims);
+
+					// Check if the code looks like the ending to a block;
+					// e.g. for block:
+					// <%= capture(() { %>
+					// <% }); %>`
+					// look for it starting with }<something>);
+					// If it does, output the last tmp buffer var on the stack
+					if(is_block_end && hasTmpBufferVar)
+					{
+
+						// the block at this level should be printed
+						if(sawBlockEnd())
+						{
+							outdent();
+							push_line(`__buff.put(%s);`.format(popTmpBufferVar()));
+						}
+					}
 				}
+
+				// remove up to the closing delimer
 				prevTempl.munchHeadOf(
 					temple_str,
 					cDelimPos.pos + cDelim.toString().length);
 			}
 			else
 			{
-				//Delim is somewhere in the string
+				// Move ahead to the next open delimer, rendering
+				// everything between here and there as a string literal
 				push_linenum();
 				immutable delim_pos = oDelimPos.pos;
 				push_string_literal(temple_str[0..delim_pos]);
@@ -184,7 +281,7 @@ string gen_temple_func_string(string temple_str, string temple_name = "InlineTem
 			}
 		}
 
-		// Count the number of newlines in the previous part of the template;
+		// count the number of newlines in the previous part of the template;
 		// that's the current line number
 		line_number = prevTempl.count('\n');
 	}
@@ -201,14 +298,14 @@ template Temple(string template_string, string temple_name)
 {
 	//pragma(msg, gen_temple_func_string(template_string, temple_name));
 	mixin(gen_temple_func_string(template_string, temple_name));
-	#line 182 "src/temple/temple.d"
+	#line 205 "src/temple/temple.d"
 }
 
 template Temple(string template_string)
 {
 	//pragma(msg, gen_temple_func_string(template_string));
 	mixin(gen_temple_func_string(template_string));
-	#line 188 "src/temple/temple.d"
+	#line 212 "src/temple/temple.d"
 }
 
 alias TempleFuncType = typeof(Temple!"");
@@ -276,18 +373,17 @@ version(unittest)
 unittest
 {
 	alias render = Temple!"";
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 
 	render(accum);
 	assert(accum.data == "");
 }
 
-
 unittest
 {
 	//Test to!string of eval delimers
 	alias render = Temple!(`<%= "foo" %>`);
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(accum.data == "foo");
 }
@@ -296,7 +392,7 @@ unittest
 {
 	// Test delimer parsing
 	alias render = Temple!("<% if(true) { %>foo<% } %>");
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(accum.data == "foo");
 }
@@ -304,7 +400,7 @@ unittest
 {
 	//Test raw text with no delimers
 	alias render = Temple!(`foo`);
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(accum.data == "foo");
 }
@@ -314,7 +410,7 @@ unittest
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %>foo<% } %>`;
 	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(accum.data == "foofoofoo");
 }
@@ -324,7 +420,7 @@ unittest
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %><%= i %><% } %>`;
 	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(accum.data == "012");
 }
@@ -334,7 +430,7 @@ unittest
 	//Test escaping of "
 	const templ = `"`;
 	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(accum.data == `"`);
 }
@@ -344,9 +440,17 @@ unittest
 	//Test escaping of '
 	const templ = `'`;
 	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(accum.data == `'`);
+}
+
+unittest
+{
+	alias render = Temple!`"%"`;
+	auto accum = new AppenderOutputStream;
+	render(accum);
+	assert(accum.data == `"%"`);
 }
 
 unittest
@@ -358,7 +462,7 @@ unittest
 		% }
 	`;
 	alias render = Temple!(templ);
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(isSameRender(accum.data, "Hello!"));
 }
@@ -372,7 +476,7 @@ unittest
 		% }
 	`;
 	alias render = Temple!(templ);
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(isSameRender(accum.data, "foo"));
 }
@@ -381,7 +485,7 @@ unittest
 	// Test shorthand only after newline
 	const templ = `foo%bar`;
 	alias render = Temple!(templ);
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 	assert(accum.data == "foo%bar");
 }
@@ -391,7 +495,7 @@ unittest
 	// Ditto
 	const templ = `<%= "foo%bar" %>`;
 	alias render = Temple!(templ);
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 
 	render(accum);
 	assert(accum.data == "foo%bar");
@@ -405,7 +509,7 @@ unittest
 
 	const templ = `<%= var("foo") %> <%= var("bar") %>`;
 	alias render = Temple!templ;
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 
 	render(accum, params);
 	assert(accum.data == "123 test");
@@ -415,7 +519,7 @@ unittest
 {
 	// Loading templates from a file
 	alias render = TempleFile!"test1.emd";
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	auto compare = readText("test/test1.emd.txt");
 
 	render(accum);
@@ -426,7 +530,7 @@ unittest
 {
 	alias render = TempleFile!"test2.emd";
 	auto compare = readText("test/test2.emd.txt");
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 
 	auto ctx = new TempleContext();
 	ctx.name = "dymk";
@@ -440,7 +544,7 @@ unittest
 {
 	alias render = TempleFile!"test3_nester.emd";
 	auto compare = readText("test/test3.emd.txt");
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 
 	render(accum);
 	assert(isSameRender(accum.data, compare));
@@ -450,7 +554,7 @@ unittest
 {
 	alias render = TempleFile!"test4_root.emd";
 	auto compare = readText("test/test4.emd.txt");
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 
 	auto ctx = new TempleContext();
 	ctx.var1 = "this_is_var1";
@@ -463,7 +567,7 @@ unittest
 {
 	alias render = Temple!"before <%= yield %> after";
 	alias partial = Temple!"between";
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 
 	auto context = new TempleContext();
 	context.partial = &partial;
@@ -476,7 +580,7 @@ unittest
 {
 	alias layout = TempleLayout!"before <%= yield %> after";
 	alias partial = Temple!"between";
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 
 	layout(accum, &partial);
 
@@ -489,7 +593,7 @@ unittest
 	alias partial1 = TempleFile!"test5_partial1.emd";
 	alias partial2 = TempleFile!"test5_partial2.emd";
 
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 
 	layout(accum, &partial1);
 
@@ -505,7 +609,7 @@ unittest
 {
 	alias layout = TempleLayoutFile!"test6_layout.emd";
 	alias partial = TempleFile!"test6_partial.emd";
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	auto context = new TempleContext();
 
 	context.name = "dymk";
@@ -520,7 +624,7 @@ unittest
 unittest
 {
 	alias render = Temple!"<%= var.foo %>";
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	auto context = new TempleContext();
 
 	context.foo = "Hello, world";
@@ -551,7 +655,7 @@ unittest
 		A said: "<%= a %>"
 	};
 
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 
 	assert(isSameRender(accum.data, `
@@ -577,7 +681,7 @@ unittest
 		<%= outer %>
 	};
 
-	auto accum = new AppenderOutputStream();
+	auto accum = new AppenderOutputStream;
 	render(accum);
 
 	assert(isSameRender(accum.data, `
@@ -585,4 +689,45 @@ unittest
 		Outer, second
 			Inner, first
 	`));
+}
+
+unittest
+{
+	alias render = TempleFile!"test8_building_helpers.emd";
+	auto accum = new AppenderOutputStream;
+
+	render(accum);
+	assert(isSameRender(accum.data, readText("test/test8_building_helpers.emd.txt")));
+}
+
+unittest
+{
+	alias render = Temple!q{
+		<%= capture(() { %>
+			directly printed
+
+			<% auto a = capture(() { %>
+				a, captured
+			<% }); %>
+			<% auto b = capture(() { %>
+				b, captured
+			<% }); %>
+
+			<%= a %>
+			<%= capture(() { %>
+				directly printed from a nested capture
+			<% }); %>
+			<%= b %>
+
+		<% }); %>
+	};
+
+	auto accum = new AppenderOutputStream;
+	render(accum);
+
+	assert(isSameRender(accum.data, `
+		directly printed
+			a, captured
+			directly printed from a nested capture
+			b, captured`));
 }
