@@ -26,11 +26,10 @@ auto form_for(
 	void delegate(FormHelper) block)
 {
 	auto form_body = capture(block, FormHelper(name));
-	return q{
+	return `
 		<form action="%s" method="POST">
 			%s
-		</form>
-	}.format(action, form_body);
+		</form>`.format(action, form_body);
 }
 %>
 
@@ -44,4 +43,5 @@ auto form_for(
 	Name: <%= f.field_for("name") %>
 	Age: <%= f.field_for("age") %>
 	DOB: <%= f.field_for("date_of_birth", "date") %>
+	<%= f.submit %>
 <% }); %>

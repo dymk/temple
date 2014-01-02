@@ -8,4 +8,5 @@
 	Name: <input type="text" name="person[name]" />
 	Age: <input type="text" name="person[age]" />
 	DOB: <input type="date" name="person[date_of_birth]" />
+	<input type="button" value="Submit" />
 </form>

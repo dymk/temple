@@ -336,19 +336,123 @@ can be nested. Example:
 
 <%= outer %>
 ```
-
 ```
 Outer, first
 Outer, second
 	Inner, first
 ```
 
+Capture blocks can also be rendered directly (although there isn't a direct reason
+to do so, this is useful for implementing helpers; see the Helpers section of the README):
+```d
+<%= capture(() { %>
+	directly printed
+
+	<% auto a = capture(() { %>
+		a, captured
+	<% }); %>
+	<% auto b = capture(() { %>
+		b, captured
+	<% }); %>
+
+	<%= a %>
+	<%= capture(() { %>
+		directly printed from a nested capture
+	<% }); %>
+	<%= b %>
+
+<% }); %>
+```
+```
+directly printed
+	a, captured
+	directly printed from a nested capture
+	b, captured
+```
+
 Planned for capture blocks: Named capture groups, a-la Rails' `content_for` helper.
+Note: This can now be implemented in version v0.4.0.
+
+Helpers (A-la Rails View Helpers)
+---------------------------------
+
+Helpers can be implemented in templates by wrapping parts of the template in a
+function literal, and passing it to a user defined function that in turn calls capture.
+
+Here's a partial implementation of Rails' `form_for` helper:
+
+```d
+<%
+import std.string;
+struct FormHelper
+{
+	string model_name;
+
+	auto field_for(string field_name, string type="text")
+	{
+		if(model_name != "")
+		{
+			field_name = "%s[%s]".format(model_name, field_name);
+		}
+
+		return `<input type="%s" name="%s" />`.format(type, field_name);
+	}
+
+	auto submit(string value = "Submit")
+	{
+		return `<input type="button" value="%s" />`.format(value);
+	}
+}
+
+auto form_for(
+	string action,
+	string name,
+	void delegate(FormHelper) block)
+{
+	auto form_body = capture(block, FormHelper(name));
+	return `
+		<form action="%s" method="POST">
+			%s
+		</form>`.format(action, form_body);
+}
+%>
+
+<%= form_for("/shorten", "", (f) { %>
+	Shorten a URL:
+	<%= f.field_for("url") %>
+	<%= f.submit("Shorten URL") %>
+<% }); %>
+
+<%= form_for("/person", "person", (f) { %>
+	Name: <%= f.field_for("name") %>
+	Age: <%= f.field_for("age") %>
+	DOB: <%= f.field_for("date_of_birth", "date") %>
+	<%= f.submit %>
+<% }); %>
+```
+
+Renders:
+```
+<form action="/shorten" method="POST">
+	Shorten a URL:
+	<input type="text" name="url" />
+	<input type="button" value="Shorten URL" />
+</form>
+
+<form action="/person" method="POST">
+	Name: <input type="text" name="person[name]" />
+	Age: <input type="text" name="person[age]" />
+	DOB: <input type="date" name="person[date_of_birth]" />
+	<input type="button" value="Submit" />
+</form>
+```
+
 
 Example
 -------
 
-Here's a slightly more complex example, demonstrating how to use
+Here's a slightly more complex example, demonstrating how to use the library
+to render HTML templates inside of a common layout
 
 ```d
 void main()
