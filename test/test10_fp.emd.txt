@@ -1,0 +1,6 @@
+layout before
+!layout generated!
+partial before
+!partial generated!
+partial after
+layout after
