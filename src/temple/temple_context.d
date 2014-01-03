@@ -112,7 +112,7 @@ public:
 		vars[op] = other;
 	}
 
-	static string renderWith(string file)(TempleContext ctx = null)
+	static AppenderOutputStream renderWith(string file)(TempleContext ctx = null)
 	{
 		alias render_func = TempleFile!(file);
 
@@ -120,32 +120,28 @@ public:
 		{
 			ctx = new TempleContext();
 		}
-		auto buff = new AppenderOutputStream();
-		scope(exit) { buff.clear(); }
 
+		auto buff = new AppenderOutputStream();
 		render_func(buff, ctx);
-		return buff.data();
+
+		return buff;
 	}
 
-	string render(string file)()
+	AppenderOutputStream render(string file)() @property
 	{
 		return TempleContext.renderWith!(file)(this);
 	}
 
-	string yield()
+	AppenderOutputStream yield() @property
 	{
 		auto buff = new AppenderOutputStream();
-		scope(exit) { buff.clear(); }
 
-		if(yielded_template is null)
-		{
-			return "";
-		}
-		else
+		if(yielded_template !is null)
 		{
 			(*yielded_template)(buff, this);
-			return buff.data;
 		}
+
+		return buff;
 	}
 }
 
