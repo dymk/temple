@@ -120,13 +120,14 @@ string gen_temple_func_string(string temple_str, string temple_name, string filt
 	//push_line(`{`);
 	//indent();
 
+	// Why isn't this just an overload of __buffFilteredPut?
+	// Because D doesn't allow overloading of nested functions
 	push_line(q{
-		// Why isn't this just an overload of __buffFilteredPut?
-		// Because D doesn't allow overloading of nested functions
 		void __buffPutStream(AppenderOutputStream os)
 		{
 			__buff.put(os.data);
 		}
+
 	});
 
 	if(filter_policy_ident.length)
@@ -134,9 +135,21 @@ string gen_temple_func_string(string temple_str, string temple_name, string filt
 		push_line(q{
 			void __buffFilteredPut(T)(T thing)
 			{
-				__buff.put(%s.templeFilter(thing));
+				__buff.put(__fp__.templeFilter(thing));
 			}
-		}.format(filter_policy_ident));
+
+			AppenderOutputStream render(string __temple_file)()
+			{
+				return renderWith!__temple_file(__context);
+			}
+
+			AppenderOutputStream renderWith(string __temple_file)(TempleContext __ctx = null)
+			{
+				alias render_func = TempleFile!(__fp__, __temple_file);
+				return __context.__templeRenderWith(&render_func, __ctx);
+			}
+
+		}.replace("__fp__", filter_policy_ident));
 	}
 	else
 	{
@@ -147,6 +160,17 @@ string gen_temple_func_string(string temple_str, string temple_name, string filt
 			{
 				import std.conv : to;
 				__buff.put(thing.to!string);
+			}
+
+			AppenderOutputStream render(string __temple_file)()
+			{
+				return renderWith!__temple_file(__context);
+			}
+
+			AppenderOutputStream renderWith(string __temple_file)(TempleContext __ctx = null)
+			{
+				alias render_func = TempleFile!__temple_file;
+				return __context.__templeRenderWith(&render_func, __ctx);
 			}
 		});
 	}
@@ -171,8 +195,8 @@ string gen_temple_func_string(string temple_str, string temple_name, string filt
 			__buffers.length--;
 		}
 
-		__context.pushTemplateHooks(&__pushBuff, &__popBuff);
-		scope(exit) { __context.popTemplateHooks(); }
+		__context.__templePushHooks(&__pushBuff, &__popBuff);
+		scope(exit) { __context.__templePopHooks(); }
 
 		import std.conv : to;
 		__buff.put("");
@@ -462,42 +486,4 @@ string templeToString(TempleLayoutFuncType* layout, TempleFuncType* partial, Tem
 	(*layout)(accum, partial, context);
 	return accum.data;
 }
-
-//// std.variant needs to be made CTFE compatible
-//version(none)
-//unittest
-//{
-//	alias render = Temple!q{
-//		Name: <%= var.name %>
-//		Number: <%= var.number %>
-
-//		<% auto captured = capture(() { %>
-//			Here is some captured content!
-//			var.name: <%= var.name %>
-//		<% }); %>
-//		<%= captured %>
-
-//		<%= capture(() { %>
-//			A capture directly being rendered, for completeness.
-//		<% }); %>
-//	};
-
-//	// The lambda is a hack to set up a temple context
-//	// at compile time, using a self executing function literal
-
-//	const result = templeToString(&render, (() {
-//		auto ctx = new TempleContext;
-//		ctx.name = "dymk";
-//		ctx.number = 1234;
-//		return ctx;
-//	})() );
-
-//	static assert(isSameRender(result, `
-//		Name: dymk
-//		Number: 1234
-//			Here is some captured content!
-//			var.name: dymk
-//		A capture directly being rendered, for completeness.
-//	`));
-//}
 

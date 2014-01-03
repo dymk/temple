@@ -1,9 +1,37 @@
 module temple.tests.filter_policy;
 
-import
-	temple.tests.common,
-	temple.temple,
-	temple.output_stream;
+import temple.tests.common;
+
+private struct SafeDemoFilter
+{
+	static struct TaintedString
+	{
+		string value;
+		bool clean = false;
+	}
+
+	static string templeFilter(TaintedString ts)
+	{
+		if(ts.clean)
+		{
+			return ts.value;
+		}
+		else
+		{
+			return "!" ~ ts.value ~ "!";
+		}
+	}
+
+	static string templeFilter(string str)
+	{
+		return templeFilter(TaintedString(str));
+	}
+
+	static TaintedString safe(string str)
+	{
+		return TaintedString(str, true);
+	}
+}
 
 unittest
 {
@@ -41,38 +69,7 @@ unittest
 
 unittest
 {
-	static struct FilterPolicy
-	{
-		static struct TaintedString
-		{
-			string value;
-			bool clean = false;
-		}
-
-		static string templeFilter(TaintedString ts)
-		{
-			if(ts.clean)
-			{
-				return ts.value;
-			}
-			else
-			{
-				return "!" ~ ts.value ~ "!";
-			}
-		}
-
-		static string templeFilter(string str)
-		{
-			return templeFilter(TaintedString(str));
-		}
-
-		static TaintedString safe(string str)
-		{
-			return TaintedString(str, true);
-		}
-	}
-
-	alias render1 = Temple!(FilterPolicy, q{
+	alias render1 = Temple!(SafeDemoFilter, q{
 		foo (filtered):   <%= "mark me" %>
 		foo (unfiltered): <%= safe("don't mark me") %>
 	});
@@ -82,7 +79,7 @@ unittest
 		foo (unfiltered): don't mark me
 	`));
 
-	alias render2 = Temple!(FilterPolicy, q{
+	alias render2 = Temple!(SafeDemoFilter, q{
 		<%
 		auto helper1(void delegate() block)
 		{
@@ -109,5 +106,29 @@ unittest
 		!foo2!
 		a !foo3! b
 		a foo4 b
+	`));
+}
+
+unittest
+{
+	// Test nested filter policies (e.g., filter policies are
+	// propogated with calls to render() and renderWith())
+
+	alias render = Temple!(SafeDemoFilter, q{
+		<%= safe("foo1") %>
+		<%= "foo2" %>
+		<%= render!"test11_propogate_fp.emd"() %>
+		<%= "after1" %>
+		after2
+	});
+
+	assert(isSameRender(templeToString(&render), `
+		foo1
+		!foo2!
+		bar1
+		!bar2!
+		bar3
+		!after1!
+		after2
 	`));
 }

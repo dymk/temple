@@ -1,9 +1,6 @@
 module temple.tests.capture;
 
-import
-	temple.tests.common,
-	temple.temple,
-	temple.output_stream;
+import temple.tests.common;
 
 unittest
 {
