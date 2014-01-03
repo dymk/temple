@@ -18,6 +18,9 @@ connections, so just pass your `TCPConnection` or `HTTPServerResponse` where the
 following examples pass an `AppenderOutputStream`. Temple's OutputStream will
 automatically subclass the appropriate class if vibe.d is present.
 
+Temple works with DMD 2.064 and later, and LDC on the `~merge-2.064` branch at
+commit `a24b8b69` (~December 29th) or later.
+
 Table of Contents
 -----------------
 
@@ -480,7 +483,7 @@ must be string, and it must take one parameter.
 
 Example, wrapping evaluated text in quotes:
 
-```
+```d
 struct QuoteFilter
 {
 	static string templeFilter(string raw)
