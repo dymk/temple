@@ -4,32 +4,24 @@ import temple.tests.common;
 
 private struct SafeDemoFilter
 {
-	static struct TaintedString
+	static struct SafeString
 	{
 		string value;
-		bool clean = false;
 	}
 
-	static string templeFilter(TaintedString ts)
+	static string templeFilter(SafeString ts)
 	{
-		if(ts.clean)
-		{
-			return ts.value;
-		}
-		else
-		{
-			return "!" ~ ts.value ~ "!";
-		}
+		return ts.value;
 	}
 
 	static string templeFilter(string str)
 	{
-		return templeFilter(TaintedString(str));
+		return "!" ~ str ~ "!";
 	}
 
-	static TaintedString safe(string str)
+	static SafeString safe(string str)
 	{
-		return TaintedString(str, true);
+		return SafeString(str);
 	}
 }
 

@@ -122,7 +122,7 @@ Bar!
 ```
 
 Contexts
------------------
+--------
 The `TempleContext` type is used to pass variables to templates. The struct responds to
 `opDispatch`, and returns variables in the `Variant` type. Use `Variant#get` to
 convert the variable to its intended type. `TemplateContext#var(string)` is used
@@ -517,38 +517,30 @@ be brought into the root scope of the template.
 Example, implementing safe/unsafe strings for conditional escaping of input:
 
 ```d
-struct SafeStringFP
+private struct SafeDemoFilter
 {
-	static struct TaintedString
+	static struct SafeString
 	{
 		string value;
-		bool clean = false;
 	}
 
-	static string templeFilter(TaintedString ts)
+	static string templeFilter(SafeString ts)
 	{
-		if(ts.clean)
-		{
-			return ts.value;
-		}
-		else
-		{
-			return "!" ~ ts.value ~ "!";
-		}
+		return ts.value;
 	}
 
 	static string templeFilter(string str)
 	{
-		return templeFilter(TaintedString(str));
+		return "!" ~ str ~ "!";
 	}
 
-	static TaintedString safe(string str)
+	static SafeString safe(string str)
 	{
-		return TaintedString(str, true);
+		return SafeString(str);
 	}
 }
 
-alias render = Temple!(SafeStringFP, q{
+alias render = Temple!(SafeDemoFilter, q{
 	foo (filtered):   <%= "mark me" %>
 	foo (unfiltered): <%= safe("don't mark me") %>
 });
