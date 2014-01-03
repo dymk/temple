@@ -48,21 +48,37 @@ private:
 		return popBuffHooks[$-1];
 	}
 
-public:
-	/// private
-	void popTemplateHooks()
+package:
+	/// package
+	void __templePopHooks()
 	{
 		pushBuffHooks.length--;
 		popBuffHooks.length--;
 	}
 
-	/// private
-	void pushTemplateHooks(TemplateHooks h)
+	/// package
+	void __templePushHooks(TemplateHooks h)
 	{
 		this.pushBuffHooks ~= h[0];
 		this.popBuffHooks ~= h[1];
 	}
 
+	/// package
+	static AppenderOutputStream __templeRenderWith(TempleFuncType* render_func, TempleContext ctx = null)
+	in { assert(render_func !is null); }
+	body
+	{
+		if(ctx is null)
+		{
+			ctx = new TempleContext();
+		}
+
+		auto buff = new AppenderOutputStream();
+		render_func(buff, ctx);
+		return buff;
+	}
+
+public:
 	string capture(T...)(void delegate(T) block, T args)
 	{
 		auto buffer = new AppenderOutputStream();
@@ -72,16 +88,6 @@ public:
 		block(args);
 		this.getPopBuffHook()();
 		return buffer.data;
-	}
-
-	void partial(TempleFuncType* temple_func) @property
-	{
-		yielded_template = temple_func;
-	}
-
-	auto partial() @property
-	{
-		return yielded_template;
 	}
 
 	bool isSet(string name)
@@ -112,40 +118,29 @@ public:
 		vars[op] = other;
 	}
 
-	static string renderWith(string file)(TempleContext ctx = null)
+	/**
+	 * Methods/properties relating to layout support
+	 */
+	void partial(TempleFuncType* temple_func) @property
 	{
-		alias render_func = TempleFile!(file);
-
-		if(ctx is null)
-		{
-			ctx = new TempleContext();
-		}
-		auto buff = new AppenderOutputStream();
-		scope(exit) { buff.clear(); }
-
-		render_func(buff, ctx);
-		return buff.data();
+		yielded_template = temple_func;
 	}
 
-	string render(string file)()
+	auto partial() @property
 	{
-		return TempleContext.renderWith!(file)(this);
+		return yielded_template;
 	}
 
-	string yield()
+	AppenderOutputStream yield() @property
 	{
 		auto buff = new AppenderOutputStream();
-		scope(exit) { buff.clear(); }
 
-		if(yielded_template is null)
-		{
-			return "";
-		}
-		else
+		if(yielded_template !is null)
 		{
 			(*yielded_template)(buff, this);
-			return buff.data;
 		}
+
+		return buff;
 	}
 }
 

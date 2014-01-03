@@ -1,0 +1,3 @@
+partial before
+<%= "partial generated" %>
+partial after

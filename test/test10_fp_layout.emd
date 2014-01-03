@@ -1,0 +1,4 @@
+layout before
+<%= "layout generated" %>
+<%= yield %>
+layout after

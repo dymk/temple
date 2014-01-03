@@ -26,7 +26,8 @@ version(Have_vibe_d)
 }
 else
 {
-	// vibe.d OutputStream compatibility
+	// Semi-vibe.d OutputStream
+	// Taken from vide.core.stream
 
 	interface OutputStream {
 		/** Writes an array of bytes to the stream.
