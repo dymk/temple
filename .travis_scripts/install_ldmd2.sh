@@ -1,12 +1,5 @@
 #!/bin/bash
 
-sudo apt-get install cmake llvm-3.2 libconfig++-dev
-git clone https://github.com/ldc-developers/ldc.git ldc
-cd ldc
-git checkout a24b8b69
-git submodule update --init
-mkdir build && cd build
-cmake ..
-make -j2
-sudo make install
-cd ..
+wget --no-check-certificate https://github.com/ldc-developers/ldc/releases/download/v0.13.0-alpha1/ldc2-0.13.0-alpha1-linux-x86_64.tar.gz
+tar -xzf ldc2-0.13.0-alpha1-linux-x86_64.tar.gz
+sudo ln -s `pwd`/ldc2-0.13.0-linux-x86_64/bin/ldmd2 /usr/bin/ldmd2
