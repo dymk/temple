@@ -34,33 +34,33 @@ public import
  * Temple
  * Main template for generating Temple functions
  */
-template Temple(string __TempleString, __FilterPolicy = void)
+template Temple(string __TempleString, __Filter = void)
 {
-	alias Temple = Temple!(__TempleString, "InlineTemplate", __FilterPolicy);
+	alias Temple = Temple!(__TempleString, "InlineTemplate", __Filter);
 }
 
 template Temple(
 	string __TempleString,
 	string __TempleName,
-	__FilterPolicy = void)
+	__Filter = void)
 {
 	// __TempleString: The template string to compile
 	// __TempleName: The template's file name, or 'InlineTemplate'
-	// __FilterPolicy: FP for the rendered template
+	// __Filter: FP for the rendered template
 
-	// Is a FilterPolicy present?
-	enum __TempleHasFP = !is(__FilterPolicy == void);
+	// Is a Filter present?
+	enum __TempleHasFP = !is(__Filter == void);
 
-	// Needs to be kept in sync with the param name of the FilterPolicy
+	// Needs to be kept in sync with the param name of the Filter
 	// passed to Temple
-	enum __TempleFilterPolicyIdent = __TempleHasFP ? "__FilterPolicy" : "";
+	enum __TempleFilterIdent = __TempleHasFP ? "__Filter" : "";
 
 	// Generates the actual function string, with the function name being
 	// `TempleFunc`.
 	const __TempleFuncStr = __temple_gen_temple_func_string(
 		__TempleString,
 		__TempleName,
-		__TempleFilterPolicyIdent);
+		__TempleFilterIdent);
 
 	//pragma(msg, temple_fun_str);
 
@@ -69,7 +69,7 @@ template Temple(
 	#line 413 "src/temple/temple.d"
 
 	static if(__TempleHasFP) {
-		alias Temple = TempleFunc!__FilterPolicy;
+		alias Temple = TempleFunc!__Filter;
 	}
 	else {
 		alias Temple = TempleFunc;
@@ -79,23 +79,23 @@ template Temple(
 /**
  * TempleFile
  * Compiles a file on the disk into a Temple render function
- * Takes an optional FilterPolicy
+ * Takes an optional Filter
  */
-template TempleFile(string template_file, FilterPolicy = void)
+template TempleFile(string template_file, Filter = void)
 {
 	pragma(msg, "Compiling ", template_file, "...");
-	alias TempleFile = Temple!(import(template_file), template_file, FilterPolicy);
+	alias TempleFile = Temple!(import(template_file), template_file, Filter);
 }
 
 /**
  * TempleLayout
  * Sets up a template to be used as an enclosing layout for a nested Temple
  * template
- * Takes an optional FilterPolicy
+ * Takes an optional Filter
  */
-template TempleLayout(string template_string, FilterPolicy = void)
+template TempleLayout(string template_string, Filter = void)
 {
-	alias layout_renderer = Temple!(template_string, FilterPolicy);
+	alias layout_renderer = Temple!(template_string, Filter);
 	alias TempleLayout = TempleLayoutImpl!layout_renderer;
 }
 
@@ -103,11 +103,11 @@ template TempleLayout(string template_string, FilterPolicy = void)
  * TempleLayout
  * Sets up a file to be used as an enclosing layout for a nested Temple
  * template
- * Takes an optional FilterPolicy
+ * Takes an optional Filter
  */
-template TempleLayoutFile(string template_file, FilterPolicy = void)
+template TempleLayoutFile(string template_file, Filter = void)
 {
-	alias layout_renderer = TempleFile!(template_file, FilterPolicy);
+	alias layout_renderer = TempleFile!(template_file, Filter);
 	alias TempleLayoutFile = TempleLayoutImpl!layout_renderer;
 }
 
@@ -136,24 +136,24 @@ package void TempleLayoutImpl(alias layout_renderer)(
 }
 
 /**
- * TempleFPGroup
- * Curries a FilterPolicy to be used with the Temple* family of templates
+ * TempleFilter
+ * Partial application of a Filter to be used with the Temple* family of templates
  */
-template TempleFPGroup(FilterPolicy) {
+template TempleFilter(Filter) {
 	template Temple(ARGS...) {
-		alias Temple = .Temple!(ARGS, FilterPolicy);
+		alias Temple = .Temple!(ARGS, Filter);
 	}
 
 	template TempleFile(ARGS...) {
-		alias TempleFile = .TempleFile!(ARGS, FilterPolicy);
+		alias TempleFile = .TempleFile!(ARGS, Filter);
 	}
 
 	template TempleLayout(ARGS...) {
-		alias TempleLayout = .TempleLayout!(ARGS, FilterPolicy);
+		alias TempleLayout = .TempleLayout!(ARGS, Filter);
 	}
 
 	template TempleLayoutFile(ARGS...) {
-		alias TempleLayoutFile = .TempleLayoutFile!(ARGS, FilterPolicy);
+		alias TempleLayoutFile = .TempleLayoutFile!(ARGS, Filter);
 	}
 }
 

@@ -81,7 +81,7 @@ public:
  * a temple file.
  */
 package string __temple_gen_temple_func_string(
-	string temple_str, string temple_name, string filter_policy_ident = "")
+	string temple_str, string temple_name, string filter_ident = "")
 {
 	// Output function string being composed
 	auto function_str = "";
@@ -140,9 +140,9 @@ package string __temple_gen_temple_func_string(
 	}
 
 	string function_type_params = "";
-	if(filter_policy_ident.length)
+	if(filter_ident.length)
 	{
-		function_type_params = "(%s)".format(filter_policy_ident);
+		function_type_params = "(%s)".format(filter_ident);
 	}
 	push_line(`static void TempleFunc%s(OutputStream __temple_buff, TempleContext __temple_context = null) {`.format(function_type_params));
 
@@ -164,15 +164,22 @@ package string __temple_gen_temple_func_string(
 		}
 	});
 
-	// Is the template using a filter policy?
-	if(filter_policy_ident.length)
+	// Is the template using a filter?
+	if(filter_ident.length)
 	{
 		push_line(q{
+			/// Run 'thing' through the Filter's templeFilter static
 			void __templeBuffFilteredPut(T)(T thing)
 			{
-				// Run 'thing' through the FilterPolicy's templeFilter static
-				// method, and append the result to the output buffer
-				__temple_buff.put(__fp__.templeFilter(thing));
+				static if(__traits(compiles, __fp__.templeFilter(cast(OutputStream) __temple_buff, thing))) {
+					// The filter defines a method that takes an OutputBuffer,
+					// prefer that to appending an entire string
+					__fp__.templeFilter(__temple_buff, thing);
+				}
+				else {
+					// Fall back to templeFilter returning a string
+					__temple_buff.put( __fp__.templeFilter(thing) );
+				}
 			}
 
 			/// Renders a subtemplate here with an explicitly defined context
@@ -184,11 +191,11 @@ package string __temple_gen_temple_func_string(
 				return __temple_context.__templeRenderWith(&__temple_render_func, __ctx);
 			}
 
-		}.replace("__fp__", filter_policy_ident));
+		}.replace("__fp__", filter_ident));
 	}
 	else
 	{
-		// No filter policy means just directly append the thing to the
+		// No filter means just directly append the thing to the
 		// buffer, converting it to a string if needed
 		push_line(q{
 			void __templeBuffFilteredPut(T)(T thing)
@@ -196,8 +203,8 @@ package string __temple_gen_temple_func_string(
 				__temple_buff.put(.std.conv.to!string(thing));
 			}
 
-			/// Same as the renderWith when a filter policy is given, just
-			/// without the filter policy
+			/// Same as the renderWith when a filter is given, just
+			/// without the filter
 			AppenderOutputStream renderWith(string __temple_file)(TempleContext __ctx = null)
 			{
 				alias __temple_render_func = TempleFile!__temple_file;
@@ -234,9 +241,9 @@ package string __temple_gen_temple_func_string(
 	});
 
 	indent();
-	if(filter_policy_ident.length)
+	if(filter_ident.length)
 	{
-		push_line(`with(%s)`.format(filter_policy_ident));
+		push_line(`with(%s)`.format(filter_ident));
 	}
 	push_line(`with(__temple_context) {`);
 	indent();
@@ -340,17 +347,15 @@ package string __temple_gen_temple_func_string(
 					}
 					else
 					{
-						// A hack because D doesn't support overloading
-						// nested functions, so the thing being pushed
-						// has to be manually be passed to the right
-						// buffer append function
-						// Comparing typeof().stringof to another string is another hack...
-						// is(typeof(__expr__) == AppenderOutputStream) always returns false
 						push_line(q{
+							// AppenderOuputStream should never be passed through
+							// a filter; it should be directly appended to the stream
 							static if(is(typeof(__expr__) == AppenderOutputStream))
 							{
 								__templeBuffPutStream(__expr__);
 							}
+
+							// But other content should be filtered
 							else
 							{
 								__templeBuffFilteredPut(__expr__);
@@ -371,7 +376,7 @@ package string __temple_gen_temple_func_string(
 					// Check if the code looks like the ending to a block;
 					// e.g. for block:
 					// <%= capture(() { %>
-					// <% }); %>`
+					// <% }, "foo"); %>`
 					// look for it starting with }<something>);
 					// If it does, output the last tmp buffer var on the stack
 					if(is_block_end && !temp_var_names.empty)

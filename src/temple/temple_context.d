@@ -25,7 +25,7 @@ import temple.output_stream;
 public import std.variant : Variant;
 private import std.array, std.string, std.typetuple;
 
-class TempleContext
+final class TempleContext
 {
 private:
 	// First hook is called to set the output buffer, the second is to unset it.
@@ -104,7 +104,7 @@ public:
 		return (name in vars && vars[name] != Variant());
 	}
 
-	ref Variant var(string name) @property
+	ref Variant var(string name)
 	{
 		if(name !in vars)
 			vars[name] = Variant();
@@ -112,7 +112,14 @@ public:
 		return vars[name];
 	}
 
-	VarDispatcher var() @property
+	void opIndexAssign(T)(string name, T val) {
+		if(name !in vars)
+			vars[name] = Variant();
+
+		vars[name] = val;
+	}
+
+	VarDispatcher var()
 	{
 		return VarDispatcher(this);
 	}

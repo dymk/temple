@@ -8,8 +8,6 @@
 		"Dylan Knutson"
 	],
 
-	"excludedSourceFiles": ["src/temple/tests/vibe.d"],
-
 	"configurations": [
 		{
 			"name": "unittest",
@@ -19,7 +17,6 @@
 
 		{
 			"name": "unittest-vibed",
-			"includedSourceFiles": ["src/temple/tests/vibe.d"],
 			"dependencies": {
 				"vibe-d": "==0.7.17"
 			},

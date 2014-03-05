@@ -1,4 +1,4 @@
-language: cpp # To build/install D compilers & dependencies
+language: d
 before_install:
   - chmod +x ./.travis_scripts/*.sh
 
