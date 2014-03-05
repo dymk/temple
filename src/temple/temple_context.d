@@ -68,13 +68,15 @@ package:
 	in { assert(render_func !is null); }
 	body
 	{
+		// Ensure a context is always present
 		if(ctx is null)
 		{
 			ctx = new TempleContext();
 		}
-
+		// Allocate a buffer and call the render func with it
 		auto buff = new AppenderOutputStream();
 		render_func(buff, ctx);
+
 		return buff;
 	}
 
@@ -84,9 +86,16 @@ public:
 		auto buffer = new AppenderOutputStream();
 		scope(exit) { buffer.clear(); }
 
+		// Make the template push to a new, blank buffer
 		this.getPushBuffHook()(buffer);
+
+		// Call the block (which resides inside the template, and will
+		// now write to `buffer`)
 		block(args);
+
+		// Pop `buffer` out of the template
 		this.getPopBuffHook()();
+
 		return buffer.data;
 	}
 

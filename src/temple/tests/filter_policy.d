@@ -35,10 +35,10 @@ unittest
 		}
 	}
 
-	alias render1 = Temple!(Filter, `<%= "foo" %> bar`);
+	alias render1 = Temple!(`<%= "foo" %> bar`, Filter);
 	assert(templeToString(&render1) == "!foo! bar");
 
-	alias render2 = TempleFile!(Filter, "test9_filter_policy.emd");
+	alias render2 = TempleFile!("test9_filter_policy.emd", Filter);
 	assert(isSameRender(templeToString(&render2), `!foo! bar`));
 }
 
@@ -52,8 +52,8 @@ unittest
 		}
 	}
 
-	alias layout = TempleLayoutFile!(Filter, "test10_fp_layout.emd");
-	alias partial = TempleFile!(Filter, "test10_fp_partial.emd");
+	alias layout = TempleLayoutFile!("test10_fp_layout.emd", Filter);
+	alias partial = TempleFile!("test10_fp_partial.emd", Filter);
 
 	//writeln(templeToString(&layout, &partial));
 	assert(isSameRender(templeToString(&layout, &partial), readText("test/test10_fp.emd.txt")));
@@ -61,17 +61,17 @@ unittest
 
 unittest
 {
-	alias render1 = Temple!(SafeDemoFilter, q{
+	alias render1 = Temple!(q{
 		foo (filtered):   <%= "mark me" %>
 		foo (unfiltered): <%= safe("don't mark me") %>
-	});
+	}, SafeDemoFilter);
 
 	assert(isSameRender(templeToString(&render1), `
 		foo (filtered):   !mark me!
 		foo (unfiltered): don't mark me
 	`));
 
-	alias render2 = Temple!(SafeDemoFilter, q{
+	alias render2 = Temple!(q{
 		<%
 		auto helper1(void delegate() block)
 		{
@@ -91,7 +91,7 @@ unittest
 		<%= helper1(() { %>
 			<%= safe("foo4") %>
 		<% }); %>
-	});
+	}, SafeDemoFilter);
 
 	assert(isSameRender(templeToString(&render2), `
 		foo1
@@ -106,13 +106,13 @@ unittest
 	// Test nested filter policies (e.g., filter policies are
 	// propogated with calls to render() and renderWith())
 
-	alias render = Temple!(SafeDemoFilter, q{
+	alias render = Temple!(q{
 		<%= safe("foo1") %>
 		<%= "foo2" %>
 		<%= render!"test11_propogate_fp.emd"() %>
 		<%= "after1" %>
 		after2
-	});
+	}, SafeDemoFilter);
 
 	assert(isSameRender(templeToString(&render), `
 		foo1
@@ -122,5 +122,19 @@ unittest
 		bar3
 		!after1!
 		after2
+	`));
+}
+
+unittest
+{
+	alias FPGroup = TempleFPGroup!SafeDemoFilter;
+	alias render = FPGroup.Temple!q{
+		foo1
+		<%= "foo2" %>
+	};
+
+	assert(isSameRender(templeToString(&render), `
+		foo1
+		!foo2!
 	`));
 }

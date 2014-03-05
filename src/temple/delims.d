@@ -23,12 +23,13 @@ import
 	std.traits,
 	std.typecons;
 
-//A delimer and the index that its at
+/// Represents a delimer and the index that it is located at
 template DelimPos(D = Delim)
 {
 	alias DelimPos = Tuple!(ptrdiff_t, "pos", D, "delim");
 }
 
+/// All of the delimer types parsed by Temple
 enum Delim
 {
 	OpenShort,
@@ -38,8 +39,10 @@ enum Delim
 	CloseShort,
 	Close
 }
+
 enum Delims = [EnumMembers!Delim];
 
+/// Subset of Delims, only including opening delimers
 enum OpenDelim  : Delim
 {
 	OpenShort       = Delim.OpenShort,
@@ -49,6 +52,7 @@ enum OpenDelim  : Delim
 };
 enum OpenDelims = [EnumMembers!OpenDelim];
 
+/// Subset of Delims, only including close delimers
 enum CloseDelim : Delim
 {
 	CloseShort = Delim.CloseShort,
@@ -56,6 +60,8 @@ enum CloseDelim : Delim
 }
 enum CloseDelims = [EnumMembers!CloseDelim];
 
+/// Maps an open delimer to its matching closing delimer
+/// Formally, an onto function
 enum OpenToClose =
 [
 	OpenDelim.OpenShort    : CloseDelim.CloseShort,
@@ -63,10 +69,6 @@ enum OpenToClose =
 	OpenDelim.Open         : CloseDelim.Close,
 	OpenDelim.OpenStr      : CloseDelim.Close
 ];
-unittest
-{
-	static assert(OpenToClose[OpenDelim.Open] == CloseDelim.Close);
-}
 
 string toString(const Delim d)
 {
@@ -81,6 +83,8 @@ string toString(const Delim d)
 	}
 }
 
+/// Is the delimer a shorthand delimer?
+/// e.g., `%=`, or `%`
 bool isShort(const Delim d)
 {
 	switch(d) with(Delim)
@@ -96,6 +100,8 @@ unittest {
 	static assert(Delim.Close.isShort() == false);
 }
 
+/// Is the contents of the delimer evaluated and appended to
+/// the template buffer? E.g. the content within `<%= %>` delims
 bool isStr(const Delim d)
 {
 	switch(d) with(Delim)

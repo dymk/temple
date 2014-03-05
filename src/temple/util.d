@@ -19,13 +19,15 @@
 
 module temple.util;
 
-import
+private import
   std.algorithm,
   std.typecons,
   std.array,
   std.uni;
 
-import temple.delims;
+private import temple.delims;
+
+package:
 
 bool validBeforeShort(string str) {
 	// Check that the tail of str is whitespace
@@ -73,11 +75,16 @@ unittest
 	assert(b == "");
 }
 
-DelimPos!(D)* nextDelim(Char1 : char, D)(const(Char1)[] haystack, const(D)[] delims)
+/// Returns the next matching delimeter in 'delims' found in the haystack,
+/// or null
+DelimPos!(D)* nextDelim(D)(string haystack, const(D)[] delims)
+if(is(D : Delim))
 {
 
 	alias Tuple!(Delim, "delim", string, "str") DelimStrPair;
 
+	/// The foreach is there to get around some DMD bugs
+	/// Preferrably, one of the next two lines would be used instead
 	//auto delims_strs =      delims.map!(a => new DelimStrPair(a, a.toString()) )().array();
 	//auto delim_strs  = delims_strs.map!(a => a.str)().array();
 	DelimStrPair[] delims_strs;
@@ -86,6 +93,8 @@ DelimPos!(D)* nextDelim(Char1 : char, D)(const(Char1)[] haystack, const(D)[] del
 		delims_strs ~= DelimStrPair(delim, toString(delim));
 	}
 
+	// Map delims into their string representations
+	// e.g. OpenDelim.OpenStr => `<%=`
 	string[] delim_strs;
 	foreach(delim; delims)
 	{
@@ -93,20 +102,29 @@ DelimPos!(D)* nextDelim(Char1 : char, D)(const(Char1)[] haystack, const(D)[] del
 		delim_strs = delim_strs ~ toString(delim);
 	}
 
-	auto atPos = countUntilAny(haystack, delim_strs);
+	// Find the first occurance of any of the delimers in the haystack
+	immutable atPos = countUntilAny(haystack, delim_strs);
 	if(atPos == -1)
 	{
 		return null;
 	}
 
+	// Jump to where the delim is on haystack
+	haystack = haystack[atPos .. $];
+
+	// Make sure that we match the longest of the delimers first,
+	// e.g. `<%=` is matched before `<%`
+	// Think of this as laxy lexing for maximal munch.
 	auto sorted = delims_strs.sort!("a.str.length > b.str.length")();
-	foreach(ref s; sorted)
+	foreach(s; sorted)
 	{
-		if(startsWith(haystack[atPos..$], s.str))
+		if(startsWith(haystack, s.str))
 		{
-			return new DelimPos!D(atPos, cast(D)s.delim);
+			return new DelimPos!D(atPos, cast(D) s.delim);
 		}
 	}
+
+	// invariant
 	assert(false, "Internal bug");
 }
 
@@ -121,10 +139,14 @@ unittest
 	static assert(haystack.nextDelim([Delim.Open]) is null);
 }
 
-ptrdiff_t countUntilAny(Char1, StrArr)(const(Char1)[] haystack, StrArr subs) {
+/// Returns the location of the first occurance of any of 'subs' found in
+/// haystack, or -1 if none are found
+ptrdiff_t countUntilAny(string haystack, string[] subs) {
+	// First, calculate first occurance for all subs
 	auto indexes_of = subs.map!( sub => haystack.countUntil(sub) );
 	ptrdiff_t min_index = -1;
 
+	// Then find smallest index that isn't -1
 	foreach(index_of; indexes_of)
 	{
 		if(index_of != -1)
@@ -176,7 +198,7 @@ unittest
 // Internal, inefficiant function for removing the whitespace from
 // a string (for comparing that templates generate the same output,
 // ignoring whitespace exactnes)
-package string stripWs(string unclean) {
+string stripWs(string unclean) {
 	return unclean
 	.filter!(a => !isWhite(a) )
 	.map!( a => cast(char) a )
@@ -191,7 +213,9 @@ unittest
 	static assert(stripWs(" a\ns\rd f ") == "asdf");
 }
 
-package bool endsWithIgnoreWhitespace(string haystack, string needle)
+// Checks if haystack ends with needle, ignoring the whitespace in either
+// of them
+bool endsWithIgnoreWhitespace(string haystack, string needle)
 {
 	haystack = haystack.stripWs;
 	needle   = needle.stripWs;
@@ -205,7 +229,7 @@ unittest
 	static assert(!endsWithIgnoreWhitespace(")   {}", "){"));
 }
 
-package bool startsWithBlockClose(string haystack)
+bool startsWithBlockClose(string haystack)
 {
 	haystack = haystack.stripWs;
 
@@ -225,12 +249,12 @@ unittest
 	static assert(!startsWithBlockClose(`};`));
 }
 
-package bool isBlockStart(string haystack)
+bool isBlockStart(string haystack)
 {
 	return haystack.endsWithIgnoreWhitespace("){");
 }
 
-package bool isBlockEnd(string haystack)
+bool isBlockEnd(string haystack)
 {
 	return haystack.startsWithBlockClose();
 }
