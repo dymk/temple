@@ -1,0 +1,6 @@
+<%= "<div>escaped header</div>" %>
+<div>header div</div>
+header
+<%= yield %>
+footer
+<div>footer div</div>

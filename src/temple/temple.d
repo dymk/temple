@@ -62,11 +62,11 @@ template Temple(
 		__TempleName,
 		__TempleFilterIdent);
 
-	//pragma(msg, temple_fun_str);
+	// pragma(msg, __TempleFuncStr);
 
-	#line 411 "TempleFunc"
+	#line 68 "TempleFunc"
 	mixin(__TempleFuncStr);
-	#line 413 "src/temple/temple.d"
+	#line 70 "src/temple/temple.d"
 
 	static if(__TempleHasFP) {
 		alias Temple = TempleFunc!__Filter;

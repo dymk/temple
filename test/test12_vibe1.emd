@@ -1,0 +1,3 @@
+Rendering with renderTempleFile in temple.vibe
+<p>Don't escape</p>
+<%= "<p>Do escape</p>" %>
