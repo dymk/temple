@@ -112,6 +112,7 @@ unittest
 		% }
 	`;
 	alias render = Temple!(templ);
+	//static assert(false);
 	assert(isSameRender(templeToString(&render), "foo"));
 }
 unittest

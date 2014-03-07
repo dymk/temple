@@ -31,7 +31,7 @@ private import
 /**
  * Stack and generator for unique temporary variable names
  */
-private static struct TempBufferNameStack
+private struct TempBufferNameStack
 {
 private:
 	const string base;
@@ -76,6 +76,22 @@ public:
 }
 
 /**
+ * Represents a unit of code that makes up the template function
+ */
+private struct FuncPart {
+	enum Type {
+		StrLit, // String literal appended to the buffer
+		Expr,   // Runtime computed expression appended to the buffer
+		Stmt,   // Any arbitrary statement/declaration making up the function
+		Line,   // #line directive
+	}
+
+	Type type;
+	string value;
+	uint indent;
+}
+
+/**
  * __temple_gen_temple_func_string
  * Generates the function string to be mixed into a template which renders
  * a temple file.
@@ -84,45 +100,46 @@ package string __temple_gen_temple_func_string(
 	string temple_str, string temple_name, string filter_ident = "")
 {
 	// Output function string being composed
-	auto function_str = "";
+	FuncPart[] func_parts;
 
 	// Indendation level for a line being pushed
-	auto indent_level = 0;
+	uint indent_level = 0;
 
 	// Current line number in the temple_str being scanned
 	size_t line_number = 0;
 
-	void push_line(string[] stmts...)
-	{
-		foreach(i; 0..indent_level)
-		{
-			function_str ~= '\t';
-		}
-		foreach(stmt; stmts)
-		{
-			function_str ~= stmt;
-		}
-		function_str ~= '\n';
+	// Generates temporary variable names and keeps them on a stack
+	auto temp_var_names = TempBufferNameStack("__temple_capture_var_");
+
+	// Content removed from the head of temple_str is put on the tail of this
+	string prev_temple_str = "";
+
+	/* ----- func_parts appending functions ----- */
+	void push_expr(string expr) {
+		func_parts ~= FuncPart(FuncPart.Type.Expr, expr, indent_level);
 	}
 
-	void push_linenum()
+	void push_stmt(string stmt)
 	{
-		push_line(`#line ` ~ (line_number + 1).to!string ~ ` "` ~ temple_name ~ `"`);
+		func_parts ~= FuncPart(FuncPart.Type.Stmt, stmt ~ '\n', indent_level);
 	}
 
 	void push_string_literal(string str)
 	{
-		if(str.length == 0)
-			return;
-
-		push_line(`__temple_buff.put("` ~ str.escapeQuotes() ~ `");`);
+		func_parts ~= FuncPart(FuncPart.Type.StrLit, str, indent_level);
 	}
+
+	void push_linenum()
+	{
+		func_parts ~= FuncPart(
+			FuncPart.Type.Line,
+			`#line %d "%s"`.format(line_number+1, temple_name) ~ "\n",
+			indent_level);
+	}
+	/* ----------------------------------------- */
 
 	void indent()  { indent_level++; }
 	void outdent() { indent_level--; }
-
-
-	auto temp_var_names = TempBufferNameStack("__temple_capture_var_");
 
 	// Tracks if the block that the parser has just
 	// finished processing should be printed (e.g., is
@@ -139,120 +156,21 @@ package string __temple_gen_temple_func_string(
 		return will_be_printed;
 	}
 
-	string function_type_params = "";
-	if(filter_ident.length)
-	{
-		function_type_params = "(%s)".format(filter_ident);
-	}
-	push_line(`static void TempleFunc%s(OutputStream __temple_buff, TempleContext __temple_context = null) {`.format(function_type_params));
-
-	// This isn't just an overload of __templeBuffFilteredPut because D doesn't allow
-	// overloading of nested functions
-	push_line(q{
-		void __templeBuffPutStream(AppenderOutputStream os)
-		{
-			__temple_buff.put(os.data);
-		}
-
-	});
-
-	push_line(q{
-		/// Calls renderWith, with the current Temple context
-		AppenderOutputStream render(string __temple_file)()
-		{
-			return renderWith!__temple_file(__temple_context);
-		}
-	});
-
-	// Is the template using a filter?
-	if(filter_ident.length)
-	{
-		push_line(q{
-			/// Run 'thing' through the Filter's templeFilter static
-			void __templeBuffFilteredPut(T)(T thing)
-			{
-				static if(__traits(compiles, __fp__.templeFilter(cast(OutputStream) __temple_buff, thing))) {
-					// The filter defines a method that takes an OutputBuffer,
-					// prefer that to appending an entire string
-					__fp__.templeFilter(__temple_buff, thing);
-				}
-				else {
-					// Fall back to templeFilter returning a string
-					__temple_buff.put( __fp__.templeFilter(thing) );
-				}
-			}
-
-			/// Renders a subtemplate here with an explicitly defined context
-			/// By default, the context is null, so a blank context will be
-			/// used to render the nested template
-			AppenderOutputStream renderWith(string __temple_file)(TempleContext __ctx = null)
-			{
-				alias __temple_render_func = TempleFile!(__temple_file, __fp__);
-				return __temple_context.__templeRenderWith(&__temple_render_func, __ctx);
-			}
-
-		}.replace("__fp__", filter_ident));
-	}
-	else
-	{
-		// No filter means just directly append the thing to the
-		// buffer, converting it to a string if needed
-		push_line(q{
-			void __templeBuffFilteredPut(T)(T thing)
-			{
-				__temple_buff.put(.std.conv.to!string(thing));
-			}
-
-			/// Same as the renderWith when a filter is given, just
-			/// without the filter
-			AppenderOutputStream renderWith(string __temple_file)(TempleContext __ctx = null)
-			{
-				alias __temple_render_func = TempleFile!__temple_file;
-				return __temple_context.__templeRenderWith(&__temple_render_func, __ctx);
-			}
-		});
-	}
-
-	push_line(q{
-		// Ensure that __temple_context is never null
-		if(__temple_context is null)
-		{
-			__temple_context = new TempleContext();
-		}
-
-		// A stack of the current temple buffers, used to render nested
-		// templates with
-		OutputStream[] __temple_buffers;
-		void __pushBuff(OutputStream __new_buff)
-		{
-			__temple_buffers ~= __temple_buff;
-			__temple_buff = __new_buff;
-		}
-
-		void __popBuff()
-		{
-			__temple_buff = __temple_buffers[$-1];
-			__temple_buffers.length--;
-		}
-
-		// Push this template's hooks to the current context
-		__temple_context.__templePushHooks(&__pushBuff, &__popBuff);
-		scope(exit) { __temple_context.__templePopHooks(); }
-	});
+	// Generate the function signature, taking into account if it has a
+	// FilterParam to use
+	push_stmt(buildFunctionHead(filter_ident));
 
 	indent();
 	if(filter_ident.length)
 	{
-		push_line(`with(%s)`.format(filter_ident));
+		push_stmt(`with(%s)`.format(filter_ident));
 	}
-	push_line(`with(__temple_context) {`);
+	push_stmt(`with(__temple_context) {`);
 	indent();
 
 	// Keeps infinite loops from outright crashing the compiler
 	// The limit should be set to some arbitrary large number
 	uint safeswitch = 0;
-
-	string prevTempl = "";
 
 	while(temple_str.length)
 	{
@@ -271,7 +189,7 @@ package string __temple_gen_temple_func_string(
 			//No more delims; append the rest as a string
 			push_linenum();
 			push_string_literal(temple_str);
-			prevTempl.munchHeadOf(temple_str, temple_str.length);
+			prev_temple_str.munchHeadOf(temple_str, temple_str.length);
 		}
 		else
 		{
@@ -282,19 +200,19 @@ package string __temple_gen_temple_func_string(
 			{
 				if(oDelim.isShort())
 				{
-					if(!prevTempl.validBeforeShort())
+					if(!prev_temple_str.validBeforeShort())
 					{
 						// Chars before % weren't all whitespace, assume it's part of a
 						// string literal.
 						push_linenum();
 						push_string_literal(temple_str[0..oDelim.toString().length]);
-						prevTempl.munchHeadOf(temple_str, oDelim.toString().length);
+						prev_temple_str.munchHeadOf(temple_str, oDelim.toString().length);
 						continue;
 					}
 				}
 
 				// If we made it this far, we've got valid open/close delims
-				auto cDelimPos = temple_str.nextDelim([cDelim]);
+				DelimPos!(CloseDelim)* cDelimPos = temple_str.nextDelim([cDelim]);
 				if(cDelimPos is null)
 				{
 					if(oDelim.isShort())
@@ -342,36 +260,23 @@ package string __temple_gen_temple_func_string(
 					if(is_block_start)
 					{
 						string tmp_name = temp_var_names.pushNew();
-						push_line(`auto %s = %s`.format(tmp_name, inbetween_delims));
+						push_stmt(`auto %s = %s`.format(tmp_name, inbetween_delims));
 						indent();
 					}
 					else
 					{
-						push_line(q{
-							// AppenderOuputStream should never be passed through
-							// a filter; it should be directly appended to the stream
-							static if(is(typeof(__expr__) == AppenderOutputStream))
-							{
-								__templeBuffPutStream(__expr__);
-							}
-
-							// But other content should be filtered
-							else
-							{
-								__templeBuffFilteredPut(__expr__);
-							}
-						}.replace("__expr__", inbetween_delims));
+						push_expr(inbetween_delims);
 
 						if(cDelim == CloseDelim.CloseShort)
 						{
-							push_line(`__templeBuffFilteredPut("\n");`);
+							push_stmt(`__templeBuffFilteredPut("\n");`);
 						}
 					}
 				}
 				else
 				{
 					// It's just raw code, push it into the function body
-					push_line(inbetween_delims);
+					push_stmt(inbetween_delims);
 
 					// Check if the code looks like the ending to a block;
 					// e.g. for block:
@@ -386,13 +291,13 @@ package string __temple_gen_temple_func_string(
 						if(sawBlockEnd())
 						{
 							outdent();
-							push_line(`__temple_buff.put(%s);`.format(temp_var_names.pop()));
+							push_stmt(`__temple_buff.put(%s);`.format(temp_var_names.pop()));
 						}
 					}
 				}
 
 				// remove up to the closing delimer
-				prevTempl.munchHeadOf(
+				prev_temple_str.munchHeadOf(
 					temple_str,
 					cDelimPos.pos + cDelim.toString().length);
 			}
@@ -403,19 +308,175 @@ package string __temple_gen_temple_func_string(
 				push_linenum();
 				immutable delim_pos = oDelimPos.pos;
 				push_string_literal(temple_str[0..delim_pos]);
-				prevTempl.munchHeadOf(temple_str, delim_pos);
+				prev_temple_str.munchHeadOf(temple_str, delim_pos);
 			}
 		}
 
 		// count the number of newlines in the previous part of the template;
 		// that's the current line number
-		line_number = prevTempl.count('\n');
+		line_number = prev_temple_str.count('\n');
 	}
 
 	outdent();
-	push_line("}");
+	push_stmt("}");
 	outdent();
-	push_line("}");
+	push_stmt("}");
 
-	return function_str;
+
+	return buildFromParts(func_parts);
+}
+
+private:
+
+string buildFunctionHead(string filter_ident) {
+	string ret = "";
+
+	string function_type_params =
+		filter_ident.length ?
+			"(%s)".format(filter_ident) :
+			"" ;
+
+	ret ~= (
+`static void TempleFunc%s(OutputStream __temple_buff, TempleContext __temple_context = null) {`
+	.format(function_type_params));
+
+	// This isn't just an overload of __templeBuffFilteredPut because D doesn't allow
+	// overloading of nested functions
+	ret ~= `
+	// Ensure that __temple_context is never null
+	if(__temple_context is null)
+	{
+		__temple_context = new TempleContext();
+	}
+
+	// A stack of the current temple buffers, used to render nested
+	// templates with
+	OutputStream[] __temple_buffers;
+	void __pushBuff(OutputStream __new_buff)
+	{
+		__temple_buffers ~= __temple_buff;
+		__temple_buff = __new_buff;
+	}
+
+	void __popBuff()
+	{
+		__temple_buff = __temple_buffers[$-1];
+		__temple_buffers.length--;
+	}
+
+	// Push this template's hooks to the current context
+	__temple_context.__templePushHooks(&__pushBuff, &__popBuff);
+	scope(exit) { __temple_context.__templePopHooks(); }
+
+	void __templeBuffPutStream(AppenderOutputStream os)
+	{
+		__temple_buff.put(os.data);
+	}
+
+	void __templePutExpr(T)(T expr) {
+
+		// AppenderOuputStream should never be passed through
+		// a filter; it should be directly appended to the stream
+		static if(is(typeof(expr) == AppenderOutputStream))
+		{
+			__templeBuffPutStream(expr);
+		}
+
+		// But other content should be filtered
+		else
+		{
+			__templeBuffFilteredPut(expr);
+		}
+
+	}
+
+	/// Calls renderWith, with the current Temple context
+	AppenderOutputStream render(string __temple_file)()
+	{
+		return renderWith!__temple_file(__temple_context);
+	}
+	`;
+
+	// Is the template using a filter?
+	if(filter_ident.length)
+	{
+		ret ~= `
+	/// Run 'thing' through the Filter's templeFilter static
+	void __templeBuffFilteredPut(T)(T thing)
+	{
+		static if(__traits(compiles, __fp__.templeFilter(cast(OutputStream) __temple_buff, thing))) {
+			// The filter defines a method that takes an OutputBuffer,
+			// prefer that to appending an entire string
+			__fp__.templeFilter(__temple_buff, thing);
+		}
+		else {
+			// Fall back to templeFilter returning a string
+			__temple_buff.put( __fp__.templeFilter(thing) );
+		}
+	}
+
+	/// Renders a subtemplate here with an explicitly defined context
+	/// By default, the context is null, so a blank context will be
+	/// used to render the nested template
+	AppenderOutputStream renderWith(string __temple_file)(TempleContext __ctx = null)
+	{
+		alias __temple_render_func = TempleFile!(__temple_file, __fp__);
+		return __temple_context.__templeRenderWith(&__temple_render_func, __ctx);
+	}
+	`.replace("__fp__", filter_ident);
+	}
+	else
+	{
+		// No filter means just directly append the thing to the
+		// buffer, converting it to a string if needed
+		ret ~= `
+	void __templeBuffFilteredPut(T)(T thing)
+	{
+		__temple_buff.put(.std.conv.to!string(thing));
+	}
+
+	/// Same as the renderWith when a filter is given, just
+	/// without the filter
+	AppenderOutputStream renderWith(string __temple_file)(TempleContext __ctx = null)
+	{
+		alias __temple_render_func = TempleFile!__temple_file;
+		return __temple_context.__templeRenderWith(&__temple_render_func, __ctx);
+	} `;
+	}
+
+	return ret;
+}
+
+string buildFromParts(FuncPart[] parts) {
+	string func_str = "";
+
+	foreach(part; parts) {
+		string indent() {
+			string ret = "";
+			for(int i = 0; i < part.indent; i++)
+				ret ~= '\t';
+			return ret;
+		}
+
+		func_str ~= indent();
+
+		final switch(part.type)
+		with(FuncPart.Type) {
+			case Stmt:
+			case Line:
+				func_str ~= part.value;
+				break;
+
+			case Expr:
+				func_str ~= "__templePutExpr(" ~ part.value.strip ~ ");\n";
+				break;
+
+			case StrLit:
+				func_str ~= `__temple_buff.put("` ~ part.value.replace("\n", "\\n").escapeQuotes() ~ "\");\n";
+				break;
+		}
+
+	}
+
+	return func_str;
 }
