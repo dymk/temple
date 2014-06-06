@@ -97,7 +97,7 @@ private struct FuncPart {
  * a temple file.
  */
 package string __temple_gen_temple_func_string(
-	string temple_str, string temple_name, string filter_ident = "")
+	string temple_str, in string temple_name, in string filter_ident = "")
 {
 	// Output function string being composed
 	FuncPart[] func_parts;

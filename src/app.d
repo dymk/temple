@@ -1,8 +1,7 @@
 import temple.temple;
 
-version(unittest) {
-	pragma(msg, "Compiling templ with tests...");
-} else {
-	static assert(false, "Please build with -unittest when compiling directly");
+version(TempleUnittest)
+void main() {
+  import std.stdio;
+  writeln("temple unittests pass");
 }
-void main() {}

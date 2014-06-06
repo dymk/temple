@@ -8,19 +8,25 @@
 		"Dylan Knutson"
 	],
 
+	"targetType": "library",
+	"ignoredFiles": ["source/app.d"],
+
 	"configurations": [
 		{
 			"name": "unittest",
 			"dependencies": {},
-			"targetType": "executable"
+			"targetType": "executable",
+			"mainSourceFile": "src/app.d",
+			"versions": ["TempleUnittest"]
 		},
 
 		{
 			"name": "unittest-vibed",
 			"dependencies": {
-				"vibe-d": "==0.7.17"
+				"vibe-d": ">=0.7.20"
 			},
 			"targetType": "executable",
+			"mainSourceFile": "src/app.d",
 			"versions": ["VibeCustomMain"]
 		}
 	],

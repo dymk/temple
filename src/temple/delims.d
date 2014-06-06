@@ -70,7 +70,7 @@ enum OpenToClose =
 	OpenDelim.OpenStr      : CloseDelim.Close
 ];
 
-string toString(const Delim d)
+string toString(in Delim d)
 {
 	final switch(d) with(Delim)
 	{
@@ -85,7 +85,7 @@ string toString(const Delim d)
 
 /// Is the delimer a shorthand delimer?
 /// e.g., `%=`, or `%`
-bool isShort(const Delim d)
+bool isShort(in Delim d)
 {
 	switch(d) with(Delim)
 	{
@@ -102,7 +102,7 @@ unittest {
 
 /// Is the contents of the delimer evaluated and appended to
 /// the template buffer? E.g. the content within `<%= %>` delims
-bool isStr(const Delim d)
+bool isStr(in Delim d)
 {
 	switch(d) with(Delim)
 	{
