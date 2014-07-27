@@ -138,3 +138,34 @@ unittest
 		!foo2!
 	`));
 }
+
+unittest
+{
+	// Test unicode charachters embedded in templates
+
+	alias render = Temple!(`
+		Ю ю	Ю ю	Yu	/ju/, /ʲu/
+		Я я	Я я	Ya	/ja/, /ʲa/
+
+		% if(true) {
+			А а	А а	A	/a/
+			Б б	Б б	Be	/b/
+			В в	В в	Ve	/v/
+		% }
+	`);
+
+	assert(isSameRender(templeToString(&render), `
+		Ю ю	Ю ю	Yu	/ju/, /ʲu/
+		Я я	Я я	Ya	/ja/, /ʲa/
+		А а	А а	A	/a/
+		Б б	Б б	Be	/b/
+		В в	В в	Ve	/v/
+	`));
+}
+
+unittest
+{
+	alias render = TempleFile!"test14_unicode.emd";
+	auto compare = readText("test/test14_unicode.emd.txt");
+	assert(isSameRender(templeToString(&render), compare));
+}

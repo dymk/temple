@@ -23,7 +23,9 @@ private import
   std.algorithm,
   std.typecons,
   std.array,
-  std.uni;
+  std.uni,
+  std.conv,
+  std.utf;
 
 private import temple.delims;
 
@@ -41,15 +43,15 @@ bool validBeforeShort(string str) {
 
 unittest
 {
-	static assert("   ".validBeforeShort() == true);
-	static assert(" \t".validBeforeShort() == true);
-	static assert("foo\n".validBeforeShort() == true);
-	static assert("foo\n  ".validBeforeShort() == true);
-	static assert("foo\n  \t".validBeforeShort() == true);
+	static assert("   ".validBeforeShort());
+	static assert(" \t".validBeforeShort());
+	static assert("foo\n".validBeforeShort());
+	static assert("foo\n  ".validBeforeShort());
+	static assert("foo\n  \t".validBeforeShort);
 
 	static assert("foo  \t".validBeforeShort() == false);
-	static assert("foo".validBeforeShort() == false);
-	static assert("\nfoo".validBeforeShort() == false);
+	static assert("foo".validBeforeShort()     == false);
+	static assert("\nfoo".validBeforeShort()   == false);
 }
 
 void munchHeadOf(ref string a, ref string b, size_t amt) {
@@ -80,7 +82,6 @@ unittest
 DelimPos!(D)* nextDelim(D)(string haystack, const(D)[] delims)
 if(is(D : Delim))
 {
-
 	alias Tuple!(Delim, "delim", string, "str") DelimStrPair;
 
 	/// The foreach is there to get around some DMD bugs
@@ -98,36 +99,59 @@ if(is(D : Delim))
 	string[] delim_strs;
 	foreach(delim; delims)
 	{
-		// Would use ~= here, but CTFE in 2.063 can't handle it
+		// BUG: Would use ~= here, but CTFE in 2.063 can't handle it
 		delim_strs = delim_strs ~ toString(delim);
 	}
 
 	// Find the first occurance of any of the delimers in the haystack
-	immutable atPos = countUntilAny(haystack, delim_strs);
-	if(atPos == -1)
+	immutable index = countUntilAny(haystack, delim_strs);
+	if(index == -1)
 	{
 		return null;
 	}
 
-	// Jump to where the delim is on haystack
-	haystack = haystack[atPos .. $];
+	// Jump to where the delim is on haystack, using stride to handle
+	// unicode correctly
+	ulong pos = 0;
+	foreach(_; 0 .. index) {
+		auto size = stride(haystack, 0);
+
+		haystack = haystack[size .. $];
+		pos += size;
+	}
 
 	// Make sure that we match the longest of the delimers first,
-	// e.g. `<%=` is matched before `<%`
-	// Think of this as laxy lexing for maximal munch.
+	// e.g. `<%=` is matched before `<%` for maximal munch
 	auto sorted = delims_strs.sort!("a.str.length > b.str.length")();
 	foreach(s; sorted)
 	{
 		if(startsWith(haystack, s.str))
 		{
-			return new DelimPos!D(atPos, cast(D) s.delim);
+			return new DelimPos!D(pos, cast(D) s.delim);
 		}
 	}
 
 	// invariant
-	assert(false, "Internal bug");
+	assert(false, "internal bug: \natPos: " ~ index.to!string ~ "\nhaystack: " ~ haystack);
 }
 
+unittest
+{
+	const haystack = "% Я";
+	static assert(*(haystack.nextDelim([Delim.OpenShort])) ==
+		DelimPos!Delim(0, Delim.OpenShort));
+}
+unittest
+{
+	const haystack = "Я";
+	static assert(haystack.nextDelim([Delim.OpenShort]) == null);
+}
+unittest
+{
+	const haystack = "Я%";
+	static assert(*(haystack.nextDelim([Delim.OpenShort])) ==
+		DelimPos!Delim(codeLength!char('Я'), Delim.OpenShort));
+}
 unittest
 {
 	const haystack = Delim.Open.toString();

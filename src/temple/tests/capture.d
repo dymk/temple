@@ -1,7 +1,6 @@
 module temple.tests.capture;
 
 import temple.tests.common;
-
 unittest
 {
 	// test captures
