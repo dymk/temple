@@ -26,7 +26,9 @@ private import
 	std.conv,
 	std.string,
 	std.array,
-	std.exception;
+	std.exception,
+	std.uni,
+	std.algorithm;
 
 /**
  * Stack and generator for unique temporary variable names
@@ -450,7 +452,7 @@ string buildFunctionHead(string filter_ident) {
 string buildFromParts(in FuncPart[] parts) {
 	string func_str = "";
 
-	foreach(immutable part; parts) {
+	foreach(index, immutable part; parts) {
 		string indent() {
 			string ret = "";
 			for(int i = 0; i < part.indent; i++)
@@ -472,10 +474,26 @@ string buildFromParts(in FuncPart[] parts) {
 				break;
 
 			case StrLit:
+				if(index > 1 && index < parts.length - 2) {
+					// look ahead/behind 2 because the generator inserts
+					// #line annotations after each statement/expr/literal
+					immutable prev_type = parts[index-2].type;
+					immutable next_type = parts[index+2].type;
+
+					// if the previous and next parts are statements, and this part is all
+					// whitespace, skip inserting it into the template
+					if(
+						prev_type == FuncPart.Type.Stmt &&
+						next_type == FuncPart.Type.Stmt &&
+						part.value.all!((chr) => chr.isWhite()))
+					{
+						break;
+					}
+				}
+
 				func_str ~= `__temple_buff.put("` ~ part.value.replace("\n", "\\n").escapeQuotes() ~ "\");\n";
 				break;
 		}
-
 	}
 
 	return func_str;
