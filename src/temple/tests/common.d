@@ -254,3 +254,24 @@ unittest
 	//alias render = TempleFile!"test7_error.emd";
 	assert(!__traits(compiles, TempleFile!"test7_error.emd"));
 }
+
+unittest
+{
+	import temple.func_string_gen;
+	// Test returning early from templates
+	//auto str = `
+	alias render = Temple!`
+		one
+		% auto blah = true;
+		% if(blah) {
+			two
+			%	return;
+		% }
+		three
+	`;
+
+	//writeln(__temple_gen_temple_func_string(str, "Inline"));
+	assert(isSameRender(templeToString(&render),
+		`one
+		two`));
+}
