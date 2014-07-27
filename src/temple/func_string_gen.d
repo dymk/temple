@@ -447,10 +447,10 @@ string buildFunctionHead(string filter_ident) {
 	return ret;
 }
 
-string buildFromParts(FuncPart[] parts) {
+string buildFromParts(in FuncPart[] parts) {
 	string func_str = "";
 
-	foreach(part; parts) {
+	foreach(immutable part; parts) {
 		string indent() {
 			string ret = "";
 			for(int i = 0; i < part.indent; i++)
