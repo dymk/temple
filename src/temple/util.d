@@ -112,7 +112,7 @@ if(is(D : Delim))
 
 	// Jump to where the delim is on haystack, using stride to handle
 	// unicode correctly
-	ulong pos = 0;
+	size_t pos = 0;
 	foreach(_; 0 .. index) {
 		auto size = stride(haystack, 0);
 

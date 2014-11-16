@@ -64,10 +64,11 @@ else
 
 class AppenderOutputStream : OutputStream
 {
+private:
 	import std.array;
-
 	Appender!string accum;
 
+public:
 	void write(in ubyte[] bytes)
 	{
 		accum.put(cast(string) bytes);
@@ -80,15 +81,7 @@ class AppenderOutputStream : OutputStream
 
 	void clear()
 	{
-		if(__ctfe)
-		{
-			// Screw memory usage! We're a compiler!
-			accum = appender!string;
-		}
-		else
-		{
-			accum.clear();
-		}
+		accum = appender!string;
 	}
 
 	version(Have_vibe_d)
