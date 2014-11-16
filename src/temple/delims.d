@@ -26,7 +26,7 @@ import
 /// Represents a delimer and the index that it is located at
 template DelimPos(D = Delim)
 {
-	alias DelimPos = Tuple!(ulong, "pos", D, "delim");
+	alias DelimPos = Tuple!(size_t, "pos", D, "delim");
 }
 
 /// All of the delimer types parsed by Temple
