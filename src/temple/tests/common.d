@@ -7,6 +7,12 @@ public import
 	temple.temple,
 	temple.output_stream;
 
+bool isSameRender(in TempleRenderer t, TempleContext tc, string r2) {
+	return isSameRender(t, r2, tc);
+}
+bool isSameRender(in TempleRenderer t, string r2, TempleContext tc = null) {
+	return isSameRender(t.toString(tc), r2);
+}
 bool isSameRender(string r1, string r2)
 {
 	auto ret = r1.stripWs == r2.stripWs;
@@ -24,13 +30,14 @@ bool isSameRender(string r1, string r2)
 	return ret;
 }
 
+string templeToString(TempleRenderer function() getr, TempleContext tc = null) {
+	return getr().toString(tc);
+}
+
 unittest
 {
-	alias render = Temple!"";
-	auto accum = new AppenderOutputStream;
-
-	render(accum);
-	assert(accum.data == "");
+	auto render = Temple!"";
+	assert(render.toString() == "");
 }
 
 unittest
@@ -180,79 +187,70 @@ unittest
 
 unittest
 {
-	alias render = Temple!"before <%= yield %> after";
-	alias partial = Temple!"between";
-	auto accum = new AppenderOutputStream;
+	auto parent = Temple!"before <%= yield %> after";
+	auto partial = Temple!"between";
 
-	auto context = new TempleContext();
-	context.partial = &partial;
-
-	render(accum, context);
-	assert(isSameRender(accum.data, "before between after"));
+	assert(isSameRender(parent.layout(&partial), "before between after"));
 }
 
 unittest
 {
-	alias layout = TempleLayout!"before <%= yield %> after";
-	alias partial = Temple!"between";
-	auto accum = new AppenderOutputStream;
+	auto parent = Temple!"before <%= yield %> after";
+	auto partial = Temple!"between";
 
-	layout(accum, &partial);
-
-	assert(isSameRender(accum.data, "before between after"));
+	assert(isSameRender(parent.layout(&partial), "before between after"));
 }
 
 unittest
 {
-	alias layout = TempleLayoutFile!"test5_layout.emd";
-	alias partial1 = TempleFile!"test5_partial1.emd";
-	alias partial2 = TempleFile!"test5_partial2.emd";
+	auto parent   = TempleFile!"test5_layout.emd";
+	auto partial1 = TempleFile!"test5_partial1.emd";
+	auto partial2 = TempleFile!"test5_partial2.emd";
 
-	auto accum = new AppenderOutputStream;
+	auto p1 = parent.layout(&partial1);
+	auto p2 = parent.layout(&partial2);
 
-	layout(accum, &partial1);
-
-	assert(isSameRender(accum.data, readText("test/test5_partial1.emd.txt")));
-
-	accum.clear;
-	layout(accum, &partial2);
-	assert(isSameRender(accum.data, readText("test/test5_partial2.emd.txt")));
+	assert(isSameRender(p1, readText("test/test5_partial1.emd.txt")));
+	assert(isSameRender(p2, readText("test/test5_partial2.emd.txt")));
 }
 
 // Layouts and contexts
 unittest
 {
-	alias layout = TempleLayoutFile!"test6_layout.emd";
-	alias partial = TempleFile!"test6_partial.emd";
-	auto accum = new AppenderOutputStream;
-	auto context = new TempleContext();
+	auto parent  = TempleFile!"test6_layout.emd";
+	auto partial = TempleFile!"test6_partial.emd";
 
+	auto context = new TempleContext();
 	context.name = "dymk";
 	context.uni = "UCSD";
-	context.age = 18;
+	context.age = 19;
 
-	layout(accum, &partial, context);
-	assert(isSameRender(accum.data, readText("test/test6_partial.emd.txt")));
+	assert(isSameRender(parent.layout(&partial), context, readText("test/test6_partial.emd.txt")));
 }
 
 // opDispatch variable getting
 unittest
 {
-	alias render = Temple!"<%= var.foo %>";
-	auto accum = new AppenderOutputStream;
-	auto context = new TempleContext();
+	auto render = Temple!"<%= var.foo %>";
 
+	auto context = new TempleContext();
 	context.foo = "Hello, world";
 
-	render(accum, context);
-	assert(accum.data == "Hello, world");
+	assert(isSameRender(render, context, "Hello, world"));
 }
 
 unittest
 {
+	// 22 Nov, 2014: Disabled this bit, because DMD now ICEs when
+	// evaluating the erronious template (but not before spitting out
+	// a lot of errors). This will have to do for finding out that a templtae
+	// has a lot of errors in it.
 	// Uncomment to view the line numbers inserted into the template
-	//alias render = TempleFile!"test7_error.emd";
-	assert(!__traits(compiles, TempleFile!"test7_error.emd"));
+	//auto render = TempleFile!"test7_error.emd";
+	 //TODO:
+	//assert(!__traits(compiles, {
+	//	auto t = TempleFile!"test7_error.emd";
+	//}));
 }
 
 unittest

@@ -69,7 +69,7 @@ TempleRenderer Temple(
 
 	//pragma(msg, __TempleFuncStr);
 
-	#line 71 "TempleFunc"
+	#line 1 "TempleFunc"
 	mixin(__TempleFuncStr);
 	#line 75 "src/temple/temple.d"
 
@@ -100,7 +100,7 @@ TempleRenderer TempleFile(string template_file, Filter = void)()
 package
 struct TempleRenderer {
 
-public:
+package:
     TempleFuncSig render_func = null;
 
     // renderer used to handle 'yield's
@@ -114,6 +114,8 @@ public:
     }
 
 public:
+    //deprecated static Temple opCall()
+
     // render template directly to a string
     string toString(TempleContext tc = null) const {
         auto a = appender!string();
@@ -186,8 +188,12 @@ public:
         }
     }
 
-    TempleRenderer layout(const(TempleRenderer*) child) const {
-    	return TempleRenderer(this.render_func, child);
+    TempleRenderer layout(const(TempleRenderer*) partial) const
+    in {
+        assert(this.partial_rendr is null, "attempting to set already-set partial of a layout");
+    }
+    body {
+    	return TempleRenderer(this.render_func, partial);
     }
 
     invariant() {

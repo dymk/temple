@@ -60,7 +60,7 @@ public:
 	}
 
 	invariant() {
-		assert(this.sink);
+		assert(this.sink !is null);
 	}
 }
 

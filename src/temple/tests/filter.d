@@ -2,6 +2,9 @@ module temple.tests.filter;
 
 import temple.tests.common;
 
+// TODO: fix all of this
+version(none):
+
 private struct SafeDemoFilter
 {
 	static struct SafeString

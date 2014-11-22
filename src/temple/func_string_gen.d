@@ -350,7 +350,7 @@ string buildFunctionHead(string filter_ident) {
 
 	void __temple_put_expr(T)(T expr) {
 
-		// AppenderOuputStream should never be passed through
+		// InputStream should never be passed through
 		// a filter; it should be directly appended to the stream
 		static if(is(typeof(expr) == InputStream))
 		{
@@ -364,42 +364,44 @@ string buildFunctionHead(string filter_ident) {
 		}
 	}
 
-	/// Calls render_with, with the current Temple context
-	Appender!string render(string __temple_file)()
+	/// render subtemplate with an explicit context (which defaults to null)
+	InputStream render_with(string __temple_file)(TempleContext tc = null)
 	{
+		return InputStream(delegate(ref OutputStream s) {
+			auto nested = TempleFile!(__temple_file)();
+			nested.render(s, tc);
+		});
+	}
+	deprecated auto renderWith(string __temple_file)(TempleContext tc = null)
+	{
+		return render_with!__temple_file(tc);
+	}
+
+	InputStream render(string __temple_file)() {
 		return render_with!__temple_file(__temple_context);
 	}
 	`;
 
-	//// Is the template using a filter?
-	//if(filter_ident.length)
-	//{
-	//	ret ~= `
-	///// Run 'thing' through the Filter's templeFilter static
-	//void __temple_buff_filtered_put(T)(T thing)
-	//{
-	//	static if(__traits(compiles, __fp__.templeFilter(delegate(string s) { return; }, thing))) {
-	//		// The filter defines a method that takes an OutputBuffer,
-	//		// prefer that to appending an entire string
-	//		__fp__.templeFilter(__temple_context.sink, thing);
-	//	}
-	//	else {
-	//		// Fall back to templeFilter returning a string
-	//		__temple_context.put( __fp__.templeFilter(thing) );
-	//	}
-	//}
-
-	///// Renders a subtemplate here with an explicitly defined context
-	///// By default, the context is null, so a blank context will be
-	///// used to render the nested template
-	//AppenderOutputStream render_with(string __temple_file)(TempleContext __ctx = null)
-	//{
-	//	alias __temple_render_func = TempleFile!(__temple_file, __fp__);
-	//	return __temple_context.__templeRenderWith(&__temple_render_func, __ctx);
-	//}
-	//`.replace("__fp__", filter_ident);
-	//}
-	//else
+	// Is the template using a filter?
+	if(filter_ident.length)
+	{
+		ret ~= `
+	/// Run 'thing' through the Filter's templeFilter static
+	void __temple_buff_filtered_put(T)(T thing)
+	{
+		static if(__traits(compiles, __fp__.templeFilter(delegate(string s) { return; }, thing))) {
+			// The filter defines a method that takes an OutputBuffer,
+			// prefer that to appending an entire string
+			__fp__.templeFilter(__temple_context.sink, thing);
+		}
+		else {
+			// Fall back to templeFilter returning a string
+			__temple_context.put( __fp__.templeFilter(thing) );
+		}
+	}
+	`.replace("__fp__", filter_ident);
+	}
+	else
 	{
 		// No filter means just directly append the thing to the
 		// buffer, converting it to a string if needed
@@ -408,16 +410,7 @@ string buildFunctionHead(string filter_ident) {
 	{
 		__temple_context.put(.std.conv.to!string(thing));
 	}
-
-	/// Same as the render_with when a filter is given, just
-	/// without the filter
-	InputStream render_with(string __temple_file)(TempleContext __ctx = null)
-	{
-		return InputStream(delegate(OutputStream s) {
-			auto nested = TempleFile!(__temple_file)();
-			nested.render(s, __ctx);
-		});
-	} `;
+	`;
 	}
 
 	return ret;
@@ -448,7 +441,7 @@ string buildFromParts(in FuncPart[] parts) {
 				break;
 
 			case StrLit:
-				if(index > 1 && index < parts.length - 2) {
+				if(index > 1 && (index + 2) < parts.length) {
 					// look ahead/behind 2 because the generator inserts
 					// #line annotations after each statement/expr/literal
 					immutable prev_type = parts[index-2].type;
