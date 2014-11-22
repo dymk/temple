@@ -19,7 +19,7 @@
 
 module temple.temple_context;
 
-import temple.temple;
+import temple;
 import temple.output_stream;
 
 public import std.variant : Variant;
@@ -33,11 +33,11 @@ private:
 
 
 package:
-	const(TempleRenderer)* partial;
+	const(CompiledTemple)* partial;
 
 	/// package
 	// TODO: This needs to be marked as a "safe" string
-	static Appender!string __templeRenderWith(in TempleRenderer temple, TempleContext ctx)
+	static Appender!string __templeRenderWith(in CompiledTemple temple, TempleContext ctx)
 	body
 	{
 		// Allocate a buffer and call the render func with it
@@ -47,7 +47,7 @@ package:
 	}
 
 	// sink for rendering templates to
-	OutputStream sink;
+	TempleOutputStream sink;
 
 	// called by generated temple function
 	void put(string s) {
@@ -61,7 +61,7 @@ public:
 		scope(exit) this.sink = saved;
 
 		auto buffer = appender!string;
-		this.sink = OutputStream(buffer);
+		this.sink = TempleOutputStream(buffer);
 
 		// Call the block (which resides inside the template, and will
 		// now write to `buffer`)
@@ -109,22 +109,16 @@ public:
 		vars[op] = other;
 	}
 
-	InputStream yield() @property
+	TempleInputStream yield() @property
 	{
-		auto noop = InputStream(delegate(ref OutputStream) {
-			debug debug_writeln("yielded input stream called (was a noop)");
+		auto noop = TempleInputStream(delegate(ref TempleOutputStream) {
+			//debug debug_writeln("yielded input stream called (was a noop)");
 		});
-
-		debug debug_writeln("entered yield");
 
 		if(partial !is null)
 		{
-			debug debug_writeln("rendering partial");
-
-			return InputStream(delegate(ref OutputStream os) {
-				debug debug_writeln("yielded input stream called (actually called partial render)");
+			return TempleInputStream(delegate(ref TempleOutputStream os) {
 				partial.render(os, this);
-				//partial.render(os, null);
 			});
 		}
 

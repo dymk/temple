@@ -21,18 +21,11 @@ module temple.output_stream;
 
 private {
 	import std.range;
-}
-
-package alias OutputSink = void delegate(string);
-
-package auto debug_writeln(ARGS...)(ARGS args) {
 	import std.stdio;
-	//write(" -- debug --: ");
-	//return writeln(args);
 }
 
 // Wraps any generic output stream/sink
-package struct OutputStream {
+struct TempleOutputStream {
 private:
 	//void delegate(string) scope_sink;
 	void delegate(string) sink;
@@ -42,6 +35,12 @@ public:
 	if(isOutputRange!(T, string)) {
 		this.sink = delegate(str) {
 			os.put(str);
+		};
+	}
+
+	this(ref File f) {
+		this.sink = delegate(str) {
+			f.write(str);
 		};
 	}
 
@@ -65,7 +64,11 @@ public:
 }
 
 // newtype struct
-package struct InputStream {
+struct TempleInputStream {
 	// when called, 'into' pipes its output into OutputStream
-	void delegate(ref OutputStream os) into;
+	void delegate(ref TempleOutputStream os) into;
+
+	invariant() {
+		assert(this.into !is null);
+	}
 }

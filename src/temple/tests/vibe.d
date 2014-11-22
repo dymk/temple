@@ -5,6 +5,7 @@ module temple.tests.vibe;
  * in order to mock methods on them. However, this would require a modification
  * to the vibe.d library, so by default they're disabled.
  */
+
 version(none):
 version(Have_vibe_d):
 
@@ -54,7 +55,7 @@ public:
 		appender = new AppenderOutputStream();
 	}
 
-	override @property OutputStream bodyWriter() {
+	override @property vibe.core.stream.OutputStream bodyWriter() {
 		return appender;
 	}
 

@@ -4,7 +4,7 @@ import temple.tests.common;
 unittest
 {
 	// test captures
-	auto test = Temple!q{
+	auto test = compile_temple!q{
 		<% auto a = capture(() { %>
 			This is captured in A
 		<% }); %>
@@ -16,7 +16,6 @@ unittest
 		A said: "<%= a %>"
 	};
 
-
 	assert(isSameRender(test, `
 		B said: "This is captured in B"
 		A said: "This is captured in A"
@@ -26,7 +25,7 @@ unittest
 unittest
 {
 	// Nested captures
-	auto test = Temple!q{
+	auto test = compile_temple!q{
 		<% auto outer = capture(() { %>
 			Outer, first
 			<% auto inner = capture(() { %>
@@ -55,7 +54,7 @@ unittest
 
 unittest
 {
-	alias test = Temple!q{
+	alias test = compile_temple!q{
 		<%= capture(() { %>
 			directly printed
 
@@ -89,13 +88,13 @@ unittest
 version(none):
 unittest
 {
-	const render = Temple!q{ <%= "foo" %> };
+	const render = compile_temple!q{ <%= "foo" %> };
 	static assert(isSameRender(render, "foo"));
 }
 
 unittest
 {
-	alias render = Temple!q{
+	alias render = compile_temple!q{
 		<% if(true) { %>
 			Bort
 		<% } else { %>

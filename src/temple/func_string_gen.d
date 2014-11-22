@@ -20,7 +20,7 @@
 module temple.func_string_gen;
 
 private import
-	temple.temple,
+	temple,
 	temple.util,
 	temple.delims,
 	std.conv,
@@ -160,7 +160,7 @@ package string __temple_gen_temple_func_string(
 
 	// Generate the function signature, taking into account if it has a
 	// FilterParam to use
-	push_stmt(buildFunctionHead(filter_ident));
+	push_stmt(build_function_head(filter_ident));
 
 	indent();
 	if(filter_ident.length)
@@ -330,7 +330,7 @@ package string __temple_gen_temple_func_string(
 
 private:
 
-string buildFunctionHead(string filter_ident) {
+string build_function_head(string filter_ident) {
 	string ret = "";
 
 	string function_type_params =
@@ -350,9 +350,9 @@ string buildFunctionHead(string filter_ident) {
 
 	void __temple_put_expr(T)(T expr) {
 
-		// InputStream should never be passed through
+		// TempleInputStream should never be passed through
 		// a filter; it should be directly appended to the stream
-		static if(is(typeof(expr) == InputStream))
+		static if(is(typeof(expr) == TempleInputStream))
 		{
 			expr.into(__temple_context.sink);
 		}
@@ -364,20 +364,11 @@ string buildFunctionHead(string filter_ident) {
 		}
 	}
 
-	/// render subtemplate with an explicit context (which defaults to null)
-	InputStream render_with(string __temple_file)(TempleContext tc = null)
-	{
-		return InputStream(delegate(ref OutputStream s) {
-			auto nested = TempleFile!(__temple_file)();
-			nested.render(s, tc);
-		});
-	}
 	deprecated auto renderWith(string __temple_file)(TempleContext tc = null)
 	{
 		return render_with!__temple_file(tc);
 	}
-
-	InputStream render(string __temple_file)() {
+	TempleInputStream render(string __temple_file)() {
 		return render_with!__temple_file(__temple_context);
 	}
 	`;
@@ -389,15 +380,36 @@ string buildFunctionHead(string filter_ident) {
 	/// Run 'thing' through the Filter's templeFilter static
 	void __temple_buff_filtered_put(T)(T thing)
 	{
-		static if(__traits(compiles, __fp__.templeFilter(delegate(string s) { return; }, thing))) {
-			// The filter defines a method that takes an OutputBuffer,
-			// prefer that to appending an entire string
+		static if(__traits(compiles, __fp__.templeFilter(__temple_context.sink, thing)))
+		{
+			pragma(msg, "Deprecated: templeFilter on filters is deprecated; please use temple_filter");
 			__fp__.templeFilter(__temple_context.sink, thing);
+		}
+		else static if(__traits(compiles, __fp__.templeFilter(thing)))
+		{
+			pragma(msg, "Deprecated: templeFilter on filters is deprecated; please use temple_filter");
+			__temple_context.put(__fp__.templeFilter(thing));
+		}
+		else static if(__traits(compiles, __fp__.temple_filter(__temple_context.sink, thing))) {
+			__fp__.temple_filter(__temple_context.sink, thing);
+		}
+		else static if(__traits(compiles, __fp__.temple_filter(thing)))
+		{
+			__temple_context.put(__fp__.temple_filter(thing));
 		}
 		else {
 			// Fall back to templeFilter returning a string
-			__temple_context.put( __fp__.templeFilter(thing) );
+			static assert(false, "Filter does not have a case that accepts a " ~ T.stringof);
 		}
+	}
+
+	/// with filter, render subtemplate with an explicit context (which defaults to null)
+	TempleInputStream render_with(string __temple_file)(TempleContext tc = null)
+	{
+		return TempleInputStream(delegate(ref TempleOutputStream s) {
+			auto nested = compile_temple_file!(__temple_file, __fp__)();
+			nested.render(s, tc);
+		});
 	}
 	`.replace("__fp__", filter_ident);
 	}
@@ -409,6 +421,15 @@ string buildFunctionHead(string filter_ident) {
 	void __temple_buff_filtered_put(T)(T thing)
 	{
 		__temple_context.put(.std.conv.to!string(thing));
+	}
+
+	/// without filter, render subtemplate with an explicit context (which defaults to null)
+	TempleInputStream render_with(string __temple_file)(TempleContext tc = null)
+	{
+		return TempleInputStream(delegate(ref TempleOutputStream s) {
+			auto nested = compile_temple_file!(__temple_file)();
+			nested.render(s, tc);
+		});
 	}
 	`;
 	}

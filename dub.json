@@ -23,11 +23,11 @@
 		{
 			"name": "unittest-vibed",
 			"dependencies": {
-				"vibe-d": ">=0.7.20"
+				"vibe-d": "~master"
 			},
 			"targetType": "executable",
 			"mainSourceFile": "src/app.d",
-			"versions": ["VibeCustomMain"]
+			"versions": ["TempleUnittest", "VibeCustomMain"]
 		}
 	],
 

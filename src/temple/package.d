@@ -1,5 +1,5 @@
 /**
- * Temple (C) Dylan Knutson, 2013, distributed under the:
+ * Temple (C) Dylan Knutson, 2014, distributed under the:
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
  * Permission is hereby granted, free of charge, to any person or organization
@@ -17,7 +17,7 @@
  * a source language processor.
  */
 
-module temple.temple;
+module temple;
 
 private import
 	temple.util,
@@ -27,24 +27,27 @@ private import std.array : appender, Appender;
 private import std.range : isOutputRange;
 private import std.typecons : scoped;
 
-public import
-	temple.temple,
-	temple.temple_context,
-	temple.output_stream,
-	temple.vibe;
-
-alias TempleFuncSig = void function(TempleContext);
+public {
+    import temple.temple_context : TempleContext;
+	import temple.output_stream  : TempleOutputStream, TempleInputStream;
+	import temple.vibe;
+}
 
 /**
  * Temple
  * Main template for generating Temple functions
  */
-TempleRenderer Temple(string __TempleString, __Filter = void)()
+CompiledTemple compile_temple(string __TempleString, __Filter = void)()
 {
-	return Temple!(__TempleString, "InlineTemplate", __Filter);
+    return compile_temple!(__TempleString, "InlineTemplate", __Filter);
+}
+deprecated("Please compile_temple")
+auto Temple(ARGS...)() {
+    return .compile_temple!(ARGS)();
 }
 
-TempleRenderer Temple(
+private
+CompiledTemple compile_temple(
 	string __TempleString,
 	string __TempleName,
 	__Filter = void)()
@@ -80,7 +83,7 @@ TempleRenderer Temple(
 		alias temple_func = TempleFunc;
 	}
 
-	return TempleRenderer(&temple_func, null);
+	return CompiledTemple(&temple_func, null);
 }
 
 /**
@@ -88,25 +91,47 @@ TempleRenderer Temple(
  * Compiles a file on the disk into a Temple render function
  * Takes an optional Filter
  */
-TempleRenderer TempleFile(string template_file, Filter = void)()
+CompiledTemple compile_temple_file(string template_file, Filter = void)()
 {
 	pragma(msg, "Compiling ", template_file, "...");
-	return Temple!(import(template_file), template_file, Filter);
+	return compile_temple!(import(template_file), template_file, Filter);
+}
+
+deprecated("Please compile_temple_file")
+auto TempleFile(ARGS...)() {
+    return .compile_temple_file!(ARGS)();
 }
 
 /**
- * TempleRenderer
+ * TempleFilter
+ * Curries a Temple to always use a given template filter, for convienence
+ */
+template TempleFilter(Filter) {
+    template compile_temple(ARGS...) {
+        alias compile_temple = .compile_temple!(ARGS, Filter);
+    }
+    template compile_temple_file(ARGS...) {
+        alias compile_temple_file = .compile_temple_file!(ARGS, Filter);
+    }
+
+    deprecated("Please compile_temple")      alias Temple     = compile_temple;
+    deprecated("Please compile_temple_file") alias TempleFile = compile_temple_file;
+}
+
+/**
+ * CompiledTemple
  */
 package
-struct TempleRenderer {
+struct CompiledTemple {
 
 package:
+    alias TempleFuncSig = void function(TempleContext);
     TempleFuncSig render_func = null;
 
     // renderer used to handle 'yield's
-    const(TempleRenderer)* partial_rendr = null;
+    const(CompiledTemple)* partial_rendr = null;
 
-    this(TempleFuncSig rf, const(TempleRenderer*) cf)
+    this(TempleFuncSig rf, const(CompiledTemple*) cf)
     in { assert(rf); }
     body {
         this.render_func = rf;
@@ -126,36 +151,38 @@ public:
     // render using an arbitrary output range
     void render(T)(ref T os, TempleContext tc = null) const
     if(	isOutputRange!(T, string) &&
-    	!is(T == OutputStream))
+    	!is(T == TempleOutputStream))
     {
-    	auto oc = OutputStream(os);
+    	auto oc = TempleOutputStream(os);
     	return render(oc, tc);
     }
 
     // render using a sink function (DMD can't seem to cast a function to a delegate)
     void render(void delegate(string) sink, TempleContext tc = null) const {
-    	auto oc = OutputStream(sink);
+    	auto oc = TempleOutputStream(sink);
     	this.render(oc, tc); }
     void render(void function(string) sink, TempleContext tc = null) const {
-    	auto oc = OutputStream(sink);
+    	auto oc = TempleOutputStream(sink);
     	this.render(oc, tc); }
+    void render(ref std.stdio.File f, TempleContext tc = null) const {
+        auto oc = TempleOutputStream(f);
+        this.render(oc, tc);
+    }
 
-    // normalized render function, using an OutputStream
+    // normalized render function, using an TempleOutputStream
     package
-    void render(ref OutputStream os, TempleContext tc) const
+    void render(ref TempleOutputStream os, TempleContext tc) const
     {
         // the context never escapes the scope of a template, so it's safe
         // to allocate a new context here
         // TODO: verify this is safe
-        //auto local_tc = scoped!TempleContext();
-
-        debug debug_writeln("render called, has temple_context? ", !!tc);
+        auto local_tc = scoped!TempleContext();
 
         // and always ensure that a template is passed, at the very least,
         // an empty context (needed for various template scope book keeping)
         if(tc is null) {
-            //tc = local_tc.Scoped_payload;
-            tc = new TempleContext();
+            tc = local_tc.Scoped_payload;
+            //tc = new TempleContext();
         }
 
         // template renders into given output stream
@@ -184,16 +211,19 @@ public:
         private import vibe.stream.wrapper : StreamOutputRange;
 
         void render(vibe.core.stream.OutputStream os) {
-            this.render(StreamOutputRange(os));
+            static assert(isOutputRange!(vibe.core.stream.OutputStream, string));
+
+            auto sor = StreamOutputRange(os);
+            this.render(sor);
         }
     }
 
-    TempleRenderer layout(const(TempleRenderer*) partial) const
+    CompiledTemple layout(const(CompiledTemple*) partial) const
     in {
         assert(this.partial_rendr is null, "attempting to set already-set partial of a layout");
     }
     body {
-    	return TempleRenderer(this.render_func, partial);
+    	return CompiledTemple(this.render_func, partial);
     }
 
     invariant() {
