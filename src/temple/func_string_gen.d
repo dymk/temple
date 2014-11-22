@@ -271,7 +271,7 @@ package string __temple_gen_temple_func_string(
 
 						if(cDelim == CloseDelim.CloseShort)
 						{
-							push_stmt(`__templeBuffFilteredPut("\n");`);
+							push_stmt(`__temple_buff_filtered_put("\n");`);
 						}
 					}
 				}
@@ -293,7 +293,7 @@ package string __temple_gen_temple_func_string(
 						if(sawBlockEnd())
 						{
 							outdent();
-							push_stmt(`__temple_buff.put(%s);`.format(temp_var_names.pop()));
+							push_stmt(`__temple_context.put(%s);`.format(temp_var_names.pop()));
 						}
 					}
 				}
@@ -339,110 +339,84 @@ string buildFunctionHead(string filter_ident) {
 			"" ;
 
 	ret ~= (
-`static void TempleFunc%s(OutputStream __temple_buff, TempleContext __temple_context = null) {`
+`static void TempleFunc%s(TempleContext __temple_context) {`
 	.format(function_type_params));
 
-	// This isn't just an overload of __templeBuffFilteredPut because D doesn't allow
+	// This isn't just an overload of __temple_buff_filtered_put because D doesn't allow
 	// overloading of nested functions
 	ret ~= `
 	// Ensure that __temple_context is never null
-	if(__temple_context is null)
-	{
-		__temple_context = new TempleContext();
-	}
+	assert(__temple_context);
 
-	// A stack of the current temple buffers, used to render nested
-	// templates with
-	OutputStream[] __temple_buffers;
-	void __pushBuff(OutputStream __new_buff)
-	{
-		__temple_buffers ~= __temple_buff;
-		__temple_buff = __new_buff;
-	}
-
-	void __popBuff()
-	{
-		__temple_buff = __temple_buffers[$-1];
-		__temple_buffers.length--;
-	}
-
-	// Push this template's hooks to the current context
-	__temple_context.__templePushHooks(&__pushBuff, &__popBuff);
-	scope(exit) { __temple_context.__templePopHooks(); }
-
-	void __templeBuffPutStream(AppenderOutputStream os)
-	{
-		__temple_buff.put(os.data);
-	}
-
-	void __templePutExpr(T)(T expr) {
+	void __temple_put_expr(T)(T expr) {
 
 		// AppenderOuputStream should never be passed through
 		// a filter; it should be directly appended to the stream
-		static if(is(typeof(expr) == AppenderOutputStream))
+		static if(is(typeof(expr) == InputStream))
 		{
-			__templeBuffPutStream(expr);
+			expr.into(__temple_context.sink);
 		}
 
 		// But other content should be filtered
 		else
 		{
-			__templeBuffFilteredPut(expr);
+			__temple_buff_filtered_put(expr);
 		}
-
 	}
 
-	/// Calls renderWith, with the current Temple context
-	AppenderOutputStream render(string __temple_file)()
+	/// Calls render_with, with the current Temple context
+	Appender!string render(string __temple_file)()
 	{
-		return renderWith!__temple_file(__temple_context);
+		return render_with!__temple_file(__temple_context);
 	}
 	`;
 
-	// Is the template using a filter?
-	if(filter_ident.length)
-	{
-		ret ~= `
-	/// Run 'thing' through the Filter's templeFilter static
-	void __templeBuffFilteredPut(T)(T thing)
-	{
-		static if(__traits(compiles, __fp__.templeFilter(cast(OutputStream) __temple_buff, thing))) {
-			// The filter defines a method that takes an OutputBuffer,
-			// prefer that to appending an entire string
-			__fp__.templeFilter(__temple_buff, thing);
-		}
-		else {
-			// Fall back to templeFilter returning a string
-			__temple_buff.put( __fp__.templeFilter(thing) );
-		}
-	}
+	//// Is the template using a filter?
+	//if(filter_ident.length)
+	//{
+	//	ret ~= `
+	///// Run 'thing' through the Filter's templeFilter static
+	//void __temple_buff_filtered_put(T)(T thing)
+	//{
+	//	static if(__traits(compiles, __fp__.templeFilter(delegate(string s) { return; }, thing))) {
+	//		// The filter defines a method that takes an OutputBuffer,
+	//		// prefer that to appending an entire string
+	//		__fp__.templeFilter(__temple_context.sink, thing);
+	//	}
+	//	else {
+	//		// Fall back to templeFilter returning a string
+	//		__temple_context.put( __fp__.templeFilter(thing) );
+	//	}
+	//}
 
-	/// Renders a subtemplate here with an explicitly defined context
-	/// By default, the context is null, so a blank context will be
-	/// used to render the nested template
-	AppenderOutputStream renderWith(string __temple_file)(TempleContext __ctx = null)
-	{
-		alias __temple_render_func = TempleFile!(__temple_file, __fp__);
-		return __temple_context.__templeRenderWith(&__temple_render_func, __ctx);
-	}
-	`.replace("__fp__", filter_ident);
-	}
-	else
+	///// Renders a subtemplate here with an explicitly defined context
+	///// By default, the context is null, so a blank context will be
+	///// used to render the nested template
+	//AppenderOutputStream render_with(string __temple_file)(TempleContext __ctx = null)
+	//{
+	//	alias __temple_render_func = TempleFile!(__temple_file, __fp__);
+	//	return __temple_context.__templeRenderWith(&__temple_render_func, __ctx);
+	//}
+	//`.replace("__fp__", filter_ident);
+	//}
+	//else
 	{
 		// No filter means just directly append the thing to the
 		// buffer, converting it to a string if needed
 		ret ~= `
-	void __templeBuffFilteredPut(T)(T thing)
+	void __temple_buff_filtered_put(T)(T thing)
 	{
-		__temple_buff.put(.std.conv.to!string(thing));
+		__temple_context.put(.std.conv.to!string(thing));
 	}
 
-	/// Same as the renderWith when a filter is given, just
+	/// Same as the render_with when a filter is given, just
 	/// without the filter
-	AppenderOutputStream renderWith(string __temple_file)(TempleContext __ctx = null)
+	InputStream render_with(string __temple_file)(TempleContext __ctx = null)
 	{
-		alias __temple_render_func = TempleFile!__temple_file;
-		return __temple_context.__templeRenderWith(&__temple_render_func, __ctx);
+		return InputStream(delegate(OutputStream s) {
+			auto nested = TempleFile!(__temple_file)();
+			nested.render(s, __ctx);
+		});
 	} `;
 	}
 
@@ -470,7 +444,7 @@ string buildFromParts(in FuncPart[] parts) {
 				break;
 
 			case Expr:
-				func_str ~= "__templePutExpr(" ~ part.value.strip ~ ");\n";
+				func_str ~= "__temple_put_expr(" ~ part.value.strip ~ ");\n";
 				break;
 
 			case StrLit:
@@ -491,7 +465,7 @@ string buildFromParts(in FuncPart[] parts) {
 					}
 				}
 
-				func_str ~= `__temple_buff.put("` ~ part.value.replace("\n", "\\n").escapeQuotes() ~ "\");\n";
+				func_str ~= `__temple_context.put("` ~ part.value.replace("\n", "\\n").escapeQuotes() ~ "\");\n";
 				break;
 		}
 	}

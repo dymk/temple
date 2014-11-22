@@ -28,73 +28,44 @@ private import std.array, std.string, std.typetuple;
 final class TempleContext
 {
 private:
-	// First hook is called to set the output buffer, the second is to unset it.
-	alias TemplateHooks = TypeTuple!(void delegate(OutputStream), void delegate());
-	TemplateHooks[0][] pushBuffHooks;
-	TemplateHooks[1][] popBuffHooks;
-
+	// context variables
 	Variant[string] vars;
 
-	TempleFuncType* yielded_template;
-
-
-	TemplateHooks[0] getPushBuffHook()
-	{
-		return pushBuffHooks[$-1];
-	}
-
-	TemplateHooks[1] getPopBuffHook()
-	{
-		return popBuffHooks[$-1];
-	}
 
 package:
-	/// package
-	void __templePopHooks()
-	{
-		pushBuffHooks.length--;
-		popBuffHooks.length--;
-	}
+	const(TempleRenderer)* partial;
 
 	/// package
-	void __templePushHooks(TemplateHooks h)
-	{
-		this.pushBuffHooks ~= h[0];
-		this.popBuffHooks ~= h[1];
-	}
-
-	/// package
-	static AppenderOutputStream __templeRenderWith(TempleFuncType* render_func, TempleContext ctx = null)
-	in { assert(render_func !is null); }
+	// TODO: This needs to be marked as a "safe" string
+	static Appender!string __templeRenderWith(in TempleRenderer temple, TempleContext ctx)
 	body
 	{
-		// Ensure a context is always present
-		if(ctx is null)
-		{
-			ctx = new TempleContext();
-		}
 		// Allocate a buffer and call the render func with it
-		auto buff = new AppenderOutputStream();
-		render_func(buff, ctx);
-
+		auto buff = appender!string;
+		temple.render(buff, ctx);
 		return buff;
+	}
+
+	// sink for rendering templates to
+	OutputStream sink;
+
+	// called by generated temple function
+	void put(string s) {
+		sink.put(s);
 	}
 
 public:
 	string capture(T...)(void delegate(T) block, T args)
 	{
-		auto buffer = new AppenderOutputStream();
-		scope(exit) { buffer.clear(); }
+		auto saved = this.sink;
+		scope(exit) this.sink = saved;
 
-		// Make the template push to a new, blank buffer
-		this.getPushBuffHook()(buffer);
+		auto buffer = appender!string;
+		this.sink = OutputStream(buffer);
 
 		// Call the block (which resides inside the template, and will
 		// now write to `buffer`)
 		block(args);
-
-		// Pop `buffer` out of the template
-		this.getPopBuffHook()();
 
 		return buffer.data;
 	}
@@ -125,7 +96,11 @@ public:
 	}
 
 	Variant opDispatch(string op)() @property
-	{
+	if(op != "__ctor") // seems a scoped!T bug requires this
+	in {
+		assert(op in vars, "variant does not have key: " ~ op);
+	}
+	body {
 		return vars[op];
 	}
 
@@ -134,29 +109,26 @@ public:
 		vars[op] = other;
 	}
 
-	/**
-	 * Methods/properties relating to layout support
-	 */
-	void partial(TempleFuncType* temple_func) @property
+	InputStream yield() @property
 	{
-		yielded_template = temple_func;
-	}
+		auto noop = InputStream(delegate(ref OutputStream) {
+			debug debug_writeln("yielded input stream called (was a noop)");
+		});
 
-	auto partial() @property
-	{
-		return yielded_template;
-	}
+		debug debug_writeln("entered yield");
 
-	AppenderOutputStream yield() @property
-	{
-		auto buff = new AppenderOutputStream();
-
-		if(yielded_template !is null)
+		if(partial !is null)
 		{
-			(*yielded_template)(buff, this);
+			debug debug_writeln("rendering partial");
+
+			return InputStream(delegate(ref OutputStream os) {
+				debug debug_writeln("yielded input stream called (actually called partial render)");
+				partial.render(os, this);
+				//partial.render(os, null);
+			});
 		}
 
-		return buff;
+		return noop;
 	}
 }
 

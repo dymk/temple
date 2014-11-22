@@ -23,6 +23,9 @@ private import
 	temple.util,
 	temple.delims,
 	temple.func_string_gen;
+private import std.array : appender, Appender;
+private import std.range : isOutputRange;
+private import std.typecons : scoped;
 
 public import
 	temple.temple,
@@ -30,19 +33,21 @@ public import
 	temple.output_stream,
 	temple.vibe;
 
+alias TempleFuncSig = void function(TempleContext);
+
 /**
  * Temple
  * Main template for generating Temple functions
  */
-template Temple(string __TempleString, __Filter = void)
+TempleRenderer Temple(string __TempleString, __Filter = void)()
 {
-	alias Temple = Temple!(__TempleString, "InlineTemplate", __Filter);
+	return Temple!(__TempleString, "InlineTemplate", __Filter);
 }
 
-template Temple(
+TempleRenderer Temple(
 	string __TempleString,
 	string __TempleName,
-	__Filter = void)
+	__Filter = void)()
 {
 	// __TempleString: The template string to compile
 	// __TempleName: The template's file name, or 'InlineTemplate'
@@ -62,18 +67,20 @@ template Temple(
 		__TempleName,
 		__TempleFilterIdent);
 
-	// pragma(msg, __TempleFuncStr);
+	//pragma(msg, __TempleFuncStr);
 
-	#line 68 "TempleFunc"
+	#line 71 "TempleFunc"
 	mixin(__TempleFuncStr);
-	#line 70 "src/temple/temple.d"
+	#line 75 "src/temple/temple.d"
 
 	static if(__TempleHasFP) {
-		alias Temple = TempleFunc!__Filter;
+		alias temple_func = TempleFunc!__Filter;
 	}
 	else {
-		alias Temple = TempleFunc;
+		alias temple_func = TempleFunc;
 	}
+
+	return TempleRenderer(&temple_func, null);
 }
 
 /**
@@ -81,108 +88,109 @@ template Temple(
  * Compiles a file on the disk into a Temple render function
  * Takes an optional Filter
  */
-template TempleFile(string template_file, Filter = void)
+TempleRenderer TempleFile(string template_file, Filter = void)()
 {
 	pragma(msg, "Compiling ", template_file, "...");
-	alias TempleFile = Temple!(import(template_file), template_file, Filter);
+	return Temple!(import(template_file), template_file, Filter);
 }
 
 /**
- * TempleLayout
- * Sets up a template to be used as an enclosing layout for a nested Temple
- * template
- * Takes an optional Filter
+ * TempleRenderer
  */
-template TempleLayout(string template_string, Filter = void)
-{
-	alias layout_renderer = Temple!(template_string, Filter);
-	alias TempleLayout = TempleLayoutImpl!layout_renderer;
+package
+struct TempleRenderer {
+
+public:
+    TempleFuncSig render_func = null;
+
+    // renderer used to handle 'yield's
+    const(TempleRenderer)* partial_rendr = null;
+
+    this(TempleFuncSig rf, const(TempleRenderer*) cf)
+    in { assert(rf); }
+    body {
+        this.render_func = rf;
+        this.partial_rendr = cf;
+    }
+
+public:
+    // render template directly to a string
+    string toString(TempleContext tc = null) const {
+        auto a = appender!string();
+        this.render(a, tc);
+        return a.data;
+    }
+
+    // render using an arbitrary output range
+    void render(T)(ref T os, TempleContext tc = null) const
+    if(	isOutputRange!(T, string) &&
+    	!is(T == OutputStream))
+    {
+    	auto oc = OutputStream(os);
+    	return render(oc, tc);
+    }
+
+    // render using a sink function (DMD can't seem to cast a function to a delegate)
+    void render(void delegate(string) sink, TempleContext tc = null) const {
+    	auto oc = OutputStream(sink);
+    	this.render(oc, tc); }
+    void render(void function(string) sink, TempleContext tc = null) const {
+    	auto oc = OutputStream(sink);
+    	this.render(oc, tc); }
+
+    // normalized render function, using an OutputStream
+    package
+    void render(ref OutputStream os, TempleContext tc) const
+    {
+        // the context never escapes the scope of a template, so it's safe
+        // to allocate a new context here
+        // TODO: verify this is safe
+        //auto local_tc = scoped!TempleContext();
+
+        debug debug_writeln("render called, has temple_context? ", !!tc);
+
+        // and always ensure that a template is passed, at the very least,
+        // an empty context (needed for various template scope book keeping)
+        if(tc is null) {
+            //tc = local_tc.Scoped_payload;
+            tc = new TempleContext();
+        }
+
+        // template renders into given output stream
+        auto old = tc.sink;
+        scope(exit) tc.sink = old;
+        tc.sink = os;
+
+        // use the layout if we've got one
+        if(this.partial_rendr !is null) {
+            auto old_partial = tc.partial;
+
+                        tc.partial = this.partial_rendr;
+            scope(exit) tc.partial = old_partial;
+
+            this.render_func(tc);
+        }
+        // else, call this render function directly
+        else {
+            this.render_func(tc);
+        }
+    }
+
+    // render using a vibe.d OutputStream
+    version(Have_vibe_d) {
+        private import vibe.core.stream : OutputStream;
+        private import vibe.stream.wrapper : StreamOutputRange;
+
+        void render(vibe.core.stream.OutputStream os) {
+            this.render(StreamOutputRange(os));
+        }
+    }
+
+    TempleRenderer layout(const(TempleRenderer*) child) const {
+    	return TempleRenderer(this.render_func, child);
+    }
+
+    invariant() {
+        assert(render_func);
+    }
 }
-
-/**
- * TempleLayout
- * Sets up a file to be used as an enclosing layout for a nested Temple
- * template
- * Takes an optional Filter
- */
-template TempleLayoutFile(string template_file, Filter = void)
-{
-	alias layout_renderer = TempleFile!(template_file, Filter);
-	alias TempleLayoutFile = TempleLayoutImpl!layout_renderer;
-}
-
-/*
- * Implementation for a Temple layout function
- */
-package void TempleLayoutImpl(alias layout_renderer)(
-	OutputStream buff,
-	TempleFuncType* temple_func,
-	TempleContext context = null)
-{
-	// always ensure that a context is present
-	if(context is null)
-	{
-		context = new TempleContext();
-	}
-
-	auto old_partial = context.partial;
-	context.partial = temple_func;
-	scope(exit)
-	{
-		context.partial = old_partial;
-	}
-
-	layout_renderer(buff, context);
-}
-
-/**
- * TempleFilter
- * Partial application of a Filter to be used with the Temple* family of templates
- */
-template TempleFilter(Filter) {
-	template Temple(ARGS...) {
-		alias Temple = .Temple!(ARGS, Filter);
-	}
-
-	template TempleFile(ARGS...) {
-		alias TempleFile = .TempleFile!(ARGS, Filter);
-	}
-
-	template TempleLayout(ARGS...) {
-		alias TempleLayout = .TempleLayout!(ARGS, Filter);
-	}
-
-	template TempleLayoutFile(ARGS...) {
-		alias TempleLayoutFile = .TempleLayoutFile!(ARGS, Filter);
-	}
-}
-
-/**
- * TempleFuncType
- * TempleLayoutFuncType
- *
- * Function signatures for a Temple template, and layout template,
- * which are `void function(OutputStream, TempleContext = null)` and
- *           `void function(OutputStream, TempleFuncType*, TempleContext = null)`
- * respectivly
- */
-alias TempleFuncType = typeof(Temple!("", ""));
-alias TempleLayoutFuncType = typeof(TempleLayoutImpl!(Temple!("", "")));
-
-/**
- * Helper functions for quicly rendering a template as a string
- */
-string templeToString(TempleFuncType* func, TempleContext context = null)
-{
-	auto accum = new AppenderOutputStream;
-	(*func)(accum, context);
-	return accum.data;
-}
-
-string templeToString(TempleLayoutFuncType* layout, TempleFuncType* partial, TempleContext context = null)
-{
-	auto accum = new AppenderOutputStream;
-	(*layout)(accum, partial, context);
-	return accum.data;
-}
-
