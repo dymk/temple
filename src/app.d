@@ -9,8 +9,8 @@ const child  = compile_temple!(`partial`);
 void main() {
     writeln("temple unittests pass");
 
-    auto lay = parent.layout(&child);
+    //auto lay = parent.layout(&child);
 
-    parent.layout(&lay).render(stdout);
-    writeln();
+    //parent.layout(&lay).render(stdout);
+    //writeln();
 }
