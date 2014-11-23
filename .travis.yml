@@ -12,7 +12,7 @@ install:
   - pwd
 
 script:
-  - dub --build=unittest --compiler=$DC -v
+  - dub --build=unittest --config=unittest --compiler=$DC -v
 
 env:
   - DC=dmd
