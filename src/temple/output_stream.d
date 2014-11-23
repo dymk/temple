@@ -19,79 +19,63 @@
 
 module temple.output_stream;
 
-version(Have_vibe_d)
-{
-	public import vibe.core.stream : OutputStream;
-	private import vibe.core.stream : InputStream;
-}
-else
-{
-	// Semi-vibe.d OutputStream
-	// Taken from vide.core.stream
-
-	interface OutputStream {
-		/** Writes an array of bytes to the stream.
-		*/
-		void write(in ubyte[] bytes);
-
-		/** Writes an array of chars to the stream.
-		*/
-		final void write(in char[] bytes)
-		{
-			write(cast(const(ubyte)[])bytes);
-		}
-
-		/** These methods provide an output range interface.
-
-			Note that these functions do not flush the output stream for performance reasons. flush()
-			needs to be called manually afterwards.
-
-			See_Also: $(LINK http://dlang.org/phobos/std_range.html#isOutputRange)
-		*/
-		final void put(ubyte elem) { write((&elem)[0 .. 1]); }
-		/// ditto
-		final void put(in ubyte[] elems) { write(elems); }
-		/// ditto
-		final void put(char elem) { write((&elem)[0 .. 1]); }
-		/// ditto
-		final void put(in char[] elems) { write(elems); }
-		/// ditto
-		final void put(dchar elem) { import std.utf; char[4] chars; encode(chars, elem); put(chars); }
-		/// ditto
-		final void put(in dchar[] elems) { foreach( ch; elems ) put(ch); }
-	}
+private {
+	import std.range;
+	import std.stdio;
 }
 
-class AppenderOutputStream : OutputStream
-{
+// Wraps any generic output stream/sink
+struct TempleOutputStream {
 private:
-	import std.array;
-	Appender!string accum;
+	//void delegate(string) scope_sink;
+	void delegate(string) sink;
 
 public:
-	void write(in ubyte[] bytes)
-	{
-		accum.put(cast(string) bytes);
+	this(T)(ref T os)
+	if(isOutputRange!(T, string)) {
+		this.sink = delegate(str) {
+			os.put(str);
+		};
 	}
 
-	string data()
-	{
-		return accum.data;
+	this(ref File f) {
+		this.sink = delegate(str) {
+			f.write(str);
+		};
 	}
 
-	void clear()
-	{
-		accum = appender!string;
+	this(void delegate(string) s) {
+		this.sink = s;
 	}
 
-	version(Have_vibe_d)
-	{
-		// Stubbed out to conform to vibed interface
-		void flush() {}
-		void finalize() {}
-		void write(InputStream stream, ulong nbytes = 0LU)
-		{
-			writeDefault(stream, nbytes);
-		}
+	this(void function(string) s) {
+		this.sink = delegate(str) {
+			s(str);
+		};
+	}
+
+	void put(string s) {
+		this.sink(s);
+	}
+
+	// for vibe.d's html escape
+	package
+	void put(dchar d) {
+		import std.conv;
+		this.sink(d.to!string);
+	}
+
+	invariant() {
+		assert(this.sink !is null);
+	}
+}
+
+// newtype struct
+struct TempleInputStream {
+	// when called, 'into' pipes its output into OutputStream
+	void delegate(ref TempleOutputStream os) into;
+
+	invariant() {
+		assert(this.into !is null);
 	}
 }

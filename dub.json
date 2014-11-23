@@ -13,23 +13,28 @@
 
 	"configurations": [
 		{
+			"name": "lib",
+			"targetType": "library"
+		},
+
+		{
 			"name": "unittest",
 			"dependencies": {},
 			"targetType": "executable",
 			"mainSourceFile": "src/app.d",
-			"versions": ["TempleUnittest"]
+			"versions": ["TempleUnittest"],
+			"stringImportPaths": ["test"]
 		},
 
 		{
 			"name": "unittest-vibed",
 			"dependencies": {
-				"vibe-d": ">=0.7.20"
+				"vibe-d": "~master"
 			},
 			"targetType": "executable",
 			"mainSourceFile": "src/app.d",
-			"versions": ["VibeCustomMain"]
+			"versions": ["TempleUnittest", "VibeCustomMain"],
+			"stringImportPaths": ["test"]
 		}
-	],
-
-	"stringImportPaths": ["test"]
+	]
 }
