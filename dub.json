@@ -13,11 +13,17 @@
 
 	"configurations": [
 		{
+			"name": "lib",
+			"targetType": "library"
+		},
+
+		{
 			"name": "unittest",
 			"dependencies": {},
 			"targetType": "executable",
 			"mainSourceFile": "src/app.d",
-			"versions": ["TempleUnittest"]
+			"versions": ["TempleUnittest"],
+			"stringImportPaths": ["test"]
 		},
 
 		{
@@ -27,9 +33,8 @@
 			},
 			"targetType": "executable",
 			"mainSourceFile": "src/app.d",
-			"versions": ["TempleUnittest", "VibeCustomMain"]
+			"versions": ["TempleUnittest", "VibeCustomMain"],
+			"stringImportPaths": ["test"]
 		}
-	],
-
-	"stringImportPaths": ["test"]
+	]
 }

@@ -58,6 +58,13 @@ public:
 		this.sink(s);
 	}
 
+	// for vibe.d's html escape
+	package
+	void put(dchar d) {
+		import std.conv;
+		this.sink(d.to!string);
+	}
+
 	invariant() {
 		assert(this.sink !is null);
 	}
