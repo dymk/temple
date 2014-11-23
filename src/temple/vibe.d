@@ -5,7 +5,7 @@ version(Have_vibe_d):
 pragma(msg, "Compiling Temple with Vibed support");
 
 private {
-	import temple.temple;
+	import temple;
 	import vibe.http.server;
 	import vibe.textfilter.html;
 	import std.stdio;
@@ -17,11 +17,11 @@ struct TempleHtmlFilter {
 		const string payload;
 	}
 
-	static void templeFilter(OutputStream stream, string unsafe) {
+	static void temple_filter(ref TempleOutputStream stream, string unsafe) {
 		filterHTMLEscape(stream, unsafe);
 	}
 
-	static string templeFilter(SafeString safe) {
+	static string temple_filter(SafeString safe) {
 		return safe.payload;
 	}
 
@@ -50,8 +50,8 @@ void renderTemple(string temple, Ctx = TempleContext)
 {
 	mixin(SetupContext);
 
-	alias render = Temple!(temple, TempleHtmlFilter);
-	render(res.bodyWriter, context);
+	auto t = Temple!(temple, TempleHtmlFilter);
+	t.render(res.bodyWriter, context);
 }
 
 void renderTempleFile(string file, Ctx = TempleContext)
@@ -60,7 +60,7 @@ void renderTempleFile(string file, Ctx = TempleContext)
 {
 	mixin(SetupContext);
 
-	alias render = TempleFile!(file, TempleHtmlFilter);
+	alias render = compile_temple_file!(file, TempleHtmlFilter);
 	render(res.bodyWriter, context);
 }
 
@@ -71,7 +71,7 @@ void renderTempleLayoutFile(string layout_file, string partial_file, Ctx = Templ
 	mixin(SetupContext);
 
 	alias layout = TempleLayoutFile!(layout_file, TempleHtmlFilter);
-	alias partial = TempleFile!(partial_file, TempleHtmlFilter);
+	alias partial = compile_temple_file!(partial_file, TempleHtmlFilter);
 
 	layout(res.bodyWriter, &partial, context);
 }

@@ -9,12 +9,12 @@ private struct SafeDemoFilter
 		string value;
 	}
 
-	static string templeFilter(SafeString ts)
+	static string temple_filter(SafeString ts)
 	{
 		return ts.value;
 	}
 
-	static string templeFilter(string str)
+	static string temple_filter(string str)
 	{
 		return "!" ~ str ~ "!";
 	}
@@ -29,49 +29,51 @@ unittest
 {
 	static struct Filter
 	{
-		static string templeFilter(string raw_str)
+		static string temple_filter(string raw_str)
 		{
 			return "!" ~ raw_str ~ "!";
 		}
 	}
 
-	alias render1 = Temple!(`<%= "foo" %> bar`, Filter);
-	assert(templeToString(&render1) == "!foo! bar");
+	auto render1 = compile_temple!(`<%= "foo" %> bar`, Filter);
+	assert(isSameRender(render1, "!foo! bar"));
 
-	alias render2 = TempleFile!("test9_filter.emd", Filter);
-	assert(isSameRender(templeToString(&render2), `!foo! bar`));
+	auto render2 = compile_temple_file!("test9_filter.emd", Filter);
+	assert(isSameRender(render2, `!foo! bar`));
 }
 
 unittest
 {
 	static struct Filter
 	{
-		static string templeFilter(string raw_str)
+		static void temple_filter(ref TempleOutputStream os, string raw_str)
 		{
-			return "!" ~ raw_str ~ "!";
+			//return "!" ~ raw_str ~ "!";
+			os.put("!");
+			os.put(raw_str);
+			os.put("!");
 		}
 	}
 
-	alias layout = TempleLayoutFile!("test10_fp_layout.emd", Filter);
-	alias partial = TempleFile!("test10_fp_partial.emd", Filter);
+	auto parent  = compile_temple_file!("test10_fp_layout.emd", Filter);
+	auto partial = compile_temple_file!("test10_fp_partial.emd", Filter);
 
-	//writeln(templeToString(&layout, &partial));
-	assert(isSameRender(templeToString(&layout, &partial), readText("test/test10_fp.emd.txt")));
+	assert(isSameRender(parent.layout(&partial), readText("test/test10_fp.emd.txt")));
 }
 
 unittest
 {
-	alias render1 = Temple!(q{
+	auto render1 = compile_temple!(q{
 		foo (filtered):   <%= "mark me" %>
 		foo (unfiltered): <%= safe("don't mark me") %>
 	}, SafeDemoFilter);
 
-	assert(isSameRender(templeToString(&render1), `
+	assert(isSameRender(render1, `
 		foo (filtered):   !mark me!
 		foo (unfiltered): don't mark me
 	`));
 
-	alias render2 = Temple!(q{
+	auto render2 = compile_temple!(q{
 		<%
 		auto helper1(void delegate() block)
 		{
@@ -93,7 +95,7 @@ unittest
 		<% }); %>
 	}, SafeDemoFilter);
 
-	assert(isSameRender(templeToString(&render2), `
+	assert(isSameRender(render2, `
 		foo1
 		!foo2!
 		a !foo3! b
@@ -106,7 +108,7 @@ unittest
 	// Test nested filter (e.g., filters are propogated with calls to render()
 	// and renderWith())
 
-	alias render = Temple!(q{
+	auto render = compile_temple!(q{
 		<%= safe("foo1") %>
 		<%= "foo2" %>
 		<%= render!"test11_propogate_fp.emd"() %>
@@ -114,7 +116,7 @@ unittest
 		after2
 	}, SafeDemoFilter);
 
-	assert(isSameRender(templeToString(&render), `
+	assert(isSameRender(render, `
 		foo1
 		!foo2!
 		bar1
@@ -128,12 +130,12 @@ unittest
 unittest
 {
 	alias FPGroup = TempleFilter!SafeDemoFilter;
-	alias render = FPGroup.Temple!q{
+	auto render = FPGroup.compile_temple!q{
 		foo1
 		<%= "foo2" %>
 	};
 
-	assert(isSameRender(templeToString(&render), `
+	assert(isSameRender(render, `
 		foo1
 		!foo2!
 	`));
@@ -143,7 +145,7 @@ unittest
 {
 	// Test unicode charachters embedded in templates
 
-	alias render = Temple!(`
+	auto render = compile_temple!(`
 		Ю ю	Ю ю	Yu	/ju/, /ʲu/
 		Я я	Я я	Ya	/ja/, /ʲa/
 
@@ -154,7 +156,7 @@ unittest
 		% }
 	`);
 
-	assert(isSameRender(templeToString(&render), `
+	assert(isSameRender(render, `
 		Ю ю	Ю ю	Yu	/ju/, /ʲu/
 		Я я	Я я	Ya	/ja/, /ʲa/
 		А а	А а	A	/a/
@@ -165,7 +167,7 @@ unittest
 
 unittest
 {
-	alias render = TempleFile!"test14_unicode.emd";
+	auto render = compile_temple_file!"test14_unicode.emd";
 	auto compare = readText("test/test14_unicode.emd.txt");
-	assert(isSameRender(templeToString(&render), compare));
+	assert(isSameRender(render, compare));
 }

@@ -49,7 +49,7 @@ enum OpenDelim  : Delim
 	Open            = Delim.Open,
 	OpenShortStr    = Delim.OpenShortStr,
 	OpenStr         = Delim.OpenStr
-};
+}
 enum OpenDelims = [EnumMembers!OpenDelim];
 
 /// Subset of Delims, only including close delimers

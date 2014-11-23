@@ -8,7 +8,6 @@ module temple.tests.todos;
 
 version(none):
 
-
 // std.variant needs to be made CTFE compatible before this can work
 unittest
 {
