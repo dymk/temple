@@ -60,8 +60,8 @@ void renderTempleFile(string file, Ctx = TempleContext)
 {
 	mixin(SetupContext);
 
-	alias render = compile_temple_file!(file, TempleHtmlFilter);
-	render(res.bodyWriter, context);
+	auto t = compile_temple_file!(file, TempleHtmlFilter);
+	t.render(res.bodyWriter, context);
 }
 
 void renderTempleLayoutFile(string layout_file, string partial_file, Ctx = TempleContext)
@@ -70,10 +70,10 @@ void renderTempleLayoutFile(string layout_file, string partial_file, Ctx = Templ
 {
 	mixin(SetupContext);
 
-	alias layout = TempleLayoutFile!(layout_file, TempleHtmlFilter);
-	alias partial = compile_temple_file!(partial_file, TempleHtmlFilter);
-
-	layout(res.bodyWriter, &partial, context);
+	auto layout = compile_temple_file!(layout_file, TempleHtmlFilter);
+	auto partial = compile_temple_file!(partial_file, TempleHtmlFilter);
+	auto composed = layout.layout(&partial);
+	composed.render(res.bodyWriter, context);
 }
 
 private void copyContextParams(ref TempleContext ctx, ref HTTPServerRequest req) {

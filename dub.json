@@ -7,6 +7,12 @@
 	[
 		"Dylan Knutson"
 	],
+	"dependencies": {
+		"vibe-d": {
+			"version": "~master",
+			"optional": true
+		}
+	},
 
 	"targetType": "library",
 	"ignoredFiles": ["source/app.d"],
