@@ -28,7 +28,7 @@
 			"dependencies": {},
 			"targetType": "executable",
 			"mainSourceFile": "src/app.d",
-			"versions": ["TempleUnittest"],
+			"versions": ["TempleUnittest", "VibeCustomMain"],
 			"stringImportPaths": ["test"]
 		},
 
