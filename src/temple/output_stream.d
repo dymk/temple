@@ -59,7 +59,6 @@ public:
 	}
 
 	// for vibe.d's html escape
-	package
 	void put(dchar d) {
 		import std.conv;
 		this.sink(d.to!string);

@@ -7,6 +7,12 @@
 	[
 		"Dylan Knutson"
 	],
+	"dependencies": {
+		"vibe-d": {
+			"version": "~master",
+			"optional": true
+		}
+	},
 
 	"targetType": "library",
 	"ignoredFiles": ["source/app.d"],
@@ -22,7 +28,7 @@
 			"dependencies": {},
 			"targetType": "executable",
 			"mainSourceFile": "src/app.d",
-			"versions": ["TempleUnittest"],
+			"versions": ["TempleUnittest", "VibeCustomMain"],
 			"stringImportPaths": ["test"]
 		},
 

@@ -210,11 +210,11 @@ public:
         private import vibe.core.stream : OutputStream;
         private import vibe.stream.wrapper : StreamOutputRange;
 
-        void render(vibe.core.stream.OutputStream os) {
+		void render(vibe.core.stream.OutputStream os, TempleContext tc = null) {
             static assert(isOutputRange!(vibe.core.stream.OutputStream, string));
 
             auto sor = StreamOutputRange(os);
-            this.render(sor);
+            this.render(sor, tc);
         }
     }
 
