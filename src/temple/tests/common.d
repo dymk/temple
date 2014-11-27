@@ -30,6 +30,7 @@ bool isSameRender(string r1, string r2)
 	return ret;
 }
 
+deprecated("Please use template.toString()")
 string templeToString(CompiledTemple function() getr, TempleContext tc = null) {
 	return getr().toString(tc);
 }
@@ -43,59 +44,59 @@ unittest
 unittest
 {
 	//Test to!string of eval delimers
-	alias render = compile_temple!`<%= "foo" %>`;
-	assert(templeToString(&render) == "foo");
+	auto render = compile_temple!`<%= "foo" %>`;
+	assert(render.toString == "foo");
 }
 
 unittest
 {
 	// Test delimer parsing
-	alias render = compile_temple!("<% if(true) { %>foo<% } %>");
-	assert(templeToString(&render) == "foo");
+	auto render = compile_temple!("<% if(true) { %>foo<% } %>");
+	assert(render.toString == "foo");
 }
 unittest
 {
 	//Test raw text with no delimers
-	alias render = compile_temple!(`foo`);
-	assert(templeToString(&render) == "foo");
+	auto render = compile_temple!(`foo`);
+	assert(render.toString == "foo");
 }
 
 unittest
 {
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %>foo<% } %>`;
-	alias render = compile_temple!templ;
-	assert(templeToString(&render) == "foofoofoo");
+	auto render = compile_temple!templ;
+	assert(render.toString == "foofoofoo");
 }
 
 unittest
 {
 	//Test looping
 	const templ = `<% foreach(i; 0..3) { %><%= i %><% } %>`;
-	alias render = compile_temple!templ;
-	assert(templeToString(&render) == "012");
+	auto render = compile_temple!templ;
+	assert(render.toString == "012");
 }
 
 unittest
 {
 	//Test escaping of "
 	const templ = `"`;
-	alias render = compile_temple!templ;
-	assert(templeToString(&render) == `"`);
+	auto render = compile_temple!templ;
+	assert(render.toString == `"`);
 }
 
 unittest
 {
 	//Test escaping of '
 	const templ = `'`;
-	alias render = compile_temple!templ;
-	assert(templeToString(&render) == `'`);
+	auto render = compile_temple!templ;
+	assert(render.toString == `'`);
 }
 
 unittest
 {
-	alias render = compile_temple!`"%"`;
-	assert(templeToString(&render) == `"%"`);
+	auto render = compile_temple!`"%"`;
+	assert(render.toString == `"%"`);
 }
 
 unittest
@@ -106,8 +107,8 @@ unittest
 			Hello!
 		% }
 	`;
-	alias render = compile_temple!(templ);
-	assert(isSameRender(templeToString(&render), "Hello!"));
+	auto render = compile_temple!(templ);
+	assert(isSameRender(render.toString, "Hello!"));
 }
 
 unittest
@@ -118,23 +119,23 @@ unittest
 			%= "foo"
 		% }
 	`;
-	alias render = compile_temple!(templ);
+	auto render = compile_temple!(templ);
 	//static assert(false);
-	assert(isSameRender(templeToString(&render), "foo"));
+	assert(isSameRender(render.toString, "foo"));
 }
 unittest
 {
 	// Test shorthand only after newline
 	const templ = `foo%bar`;
-	alias render = compile_temple!(templ);
-	assert(templeToString(&render) == "foo%bar");
+	auto render = compile_temple!(templ);
+	assert(render.toString == "foo%bar");
 }
 
 unittest
 {
 	// Ditto
-	alias render = compile_temple!`<%= "foo%bar" %>`;
-	assert(templeToString(&render) == "foo%bar");
+	auto render = compile_temple!`<%= "foo%bar" %>`;
+	assert(render.toString == "foo%bar");
 }
 
 unittest
@@ -143,46 +144,46 @@ unittest
 	context.foo = 123;
 	context.bar = "test";
 
-	alias render = compile_temple!`<%= var("foo") %> <%= var("bar") %>`;
-	assert(templeToString(&render, context) == "123 test");
+	auto render = compile_temple!`<%= var("foo") %> <%= var("bar") %>`;
+	assert(render.toString(context) == "123 test");
 }
 
 unittest
 {
 	// Loading templates from a file
-	alias render = compile_temple_file!"test1.emd";
+	auto render = compile_temple_file!"test1.emd";
 	auto compare = readText("test/test1.emd.txt");
-	assert(isSameRender(templeToString(&render), compare));
+	assert(isSameRender(render.toString, compare));
 }
 
 unittest
 {
-	alias render = compile_temple_file!"test2.emd";
+	auto render = compile_temple_file!"test2.emd";
 	auto compare = readText("test/test2.emd.txt");
 
 	auto ctx = new TempleContext();
 	ctx.name = "dymk";
 	ctx.will_work = true;
 
-	assert(isSameRender(templeToString(&render, ctx), compare));
+	assert(isSameRender(render.toString(ctx), compare));
 }
 
 unittest
 {
-	alias render = compile_temple_file!"test3_nester.emd";
+	auto render = compile_temple_file!"test3_nester.emd";
 	auto compare = readText("test/test3.emd.txt");
-	assert(isSameRender(templeToString(&render), compare));
+	assert(isSameRender(render.toString, compare));
 }
 
 unittest
 {
-	alias render = compile_temple_file!"test4_root.emd";
+	auto render = compile_temple_file!"test4_root.emd";
 	auto compare = readText("test/test4.emd.txt");
 
 	auto ctx = new TempleContext();
 	ctx.var1 = "this_is_var1";
 
-	assert(isSameRender(templeToString(&render, ctx), compare));
+	assert(isSameRender(render.toString(ctx), compare));
 }
 
 unittest
@@ -246,8 +247,8 @@ unittest
 	// a lot of errors). This will have to do for finding out that a templtae
 	// has a lot of errors in it.
 	// Uncomment to view the line numbers inserted into the template
+	//TODO: check if this works in future DMD releases
 	//auto render = compile_temple_file!"test7_error.emd";
-	 //TODO:
 	//assert(!__traits(compiles, {
 	//	auto t = compile_temple_file!"test7_error.emd";
 	//}));
@@ -258,7 +259,7 @@ unittest
 	import temple.func_string_gen;
 	// Test returning early from templates
 	//auto str = `
-	alias render = compile_temple!`
+	auto render = compile_temple!`
 		one
 		% auto blah = true;
 		% if(blah) {
@@ -269,7 +270,7 @@ unittest
 	`;
 
 	//writeln(__temple_gen_temple_func_string(str, "Inline"));
-	assert(isSameRender(templeToString(&render),
+	assert(isSameRender(render.toString,
 		`one
 		two`));
 }

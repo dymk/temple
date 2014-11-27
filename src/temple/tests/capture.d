@@ -48,13 +48,13 @@ unittest
 
 unittest
 {
-	alias render = TempleFile!"test8_building_helpers.emd";
-	assert(isSameRender(templeToString(&render), readText("test/test8_building_helpers.emd.txt")));
+	auto render = compile_temple_file!"test8_building_helpers.emd";
+	assert(isSameRender(render.toString(), readText("test/test8_building_helpers.emd.txt")));
 }
 
 unittest
 {
-	alias test = compile_temple!q{
+	auto test = compile_temple!q{
 		<%= capture(() { %>
 			directly printed
 
@@ -79,6 +79,22 @@ unittest
 			a, captured
 			directly printed from a nested capture
 			b, captured`));
+}
+
+unittest
+{
+	auto test = compile_temple!q{
+		<% string a; %>
+		<%= a = capture(() { %>
+			a capture
+		<% }); %>
+		<%= a %>
+	};
+
+	assert(isSameRender(test, `
+		a capture
+		a capture
+	`));
 }
 
 /**

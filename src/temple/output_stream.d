@@ -59,6 +59,8 @@ public:
 	}
 
 	// for vibe.d's html escape
+	// TODO: write own html escaping mechanism, as this one requires an allocation
+	// made for each char written to the output
 	void put(dchar d) {
 		import std.conv;
 		this.sink(d.to!string);

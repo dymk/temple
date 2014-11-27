@@ -37,11 +37,12 @@ public {
  * Temple
  * Main template for generating Temple functions
  */
-CompiledTemple compile_temple(string __TempleString, __Filter = void)()
+CompiledTemple compile_temple(string __TempleString, __Filter = void, uint line = __LINE__, string file = __FILE__)()
 {
-    return compile_temple!(__TempleString, "InlineTemplate", __Filter);
+    import std.conv : to;
+    return compile_temple!(__TempleString, file~":"~line.to!string ~ ": InlineTemplate", __Filter);
 }
-deprecated("Please compile_temple")
+deprecated("Please use compile_temple")
 auto Temple(ARGS...)() {
     return .compile_temple!(ARGS)();
 }
@@ -97,7 +98,7 @@ CompiledTemple compile_temple_file(string template_file, Filter = void)()
 	return compile_temple!(import(template_file), template_file, Filter);
 }
 
-deprecated("Please compile_temple_file")
+deprecated("Please use compile_temple_file")
 auto TempleFile(ARGS...)() {
     return .compile_temple_file!(ARGS)();
 }
