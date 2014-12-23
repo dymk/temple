@@ -1,6 +1,8 @@
 module temple.tests.common;
 
-version(unittest):
+
+version(TempleUnittest):
+
 public import std.stdio, std.file : readText;
 public import
 	temple,

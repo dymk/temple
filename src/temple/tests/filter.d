@@ -1,5 +1,7 @@
 module temple.tests.filter;
 
+version(TempleUnittest):
+
 import temple.tests.common;
 
 private struct SafeDemoFilter
