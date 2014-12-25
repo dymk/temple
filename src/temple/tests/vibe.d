@@ -1,5 +1,7 @@
 module temple.tests.vibe;
 
+version(TempleUnittest):
+
 /**
  * Tests here depend on vibe.d's HTTPServer{Request,Response} being nonfinal
  * in order to mock methods on them. However, this would require a modification

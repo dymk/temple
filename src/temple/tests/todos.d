@@ -1,5 +1,7 @@
 module temple.tests.todos;
 
+version(TempleUnittest):
+
 /**
  * Use cases that can hopefully be made to work at some time in the future.
  * These might not work for a number of reasons, such as CTFE, Phobos, DMD, or

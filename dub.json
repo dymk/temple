@@ -9,7 +9,7 @@
 	],
 	"dependencies": {
 		"vibe-d": {
-			"version": "~master",
+			"version": ">=0.7.21",
 			"optional": true
 		}
 	},
@@ -35,7 +35,7 @@
 		{
 			"name": "unittest-vibed",
 			"dependencies": {
-				"vibe-d": "~master"
+				"vibe-d": ">=0.7.21"
 			},
 			"targetType": "executable",
 			"mainSourceFile": "src/app.d",
