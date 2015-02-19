@@ -50,7 +50,7 @@ void renderTemple(string temple, Ctx = TempleContext)
 {
 	mixin(SetupContext);
 
-	auto t = Temple!(temple, TempleHtmlFilter);
+	auto t = compile_temple!(temple, TempleHtmlFilter);
 	t.render(res.bodyWriter, context);
 }
 
