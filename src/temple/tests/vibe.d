@@ -1,80 +1,41 @@
 module temple.tests.vibe;
 
 version(TempleUnittest):
-
-/**
- * Tests here depend on vibe.d's HTTPServer{Request,Response} being nonfinal
- * in order to mock methods on them. However, this would require a modification
- * to the vibe.d library, so by default they're disabled.
- */
-
-version(none):
 version(Have_vibe_d):
 
 private {
 	import temple.tests.common;
 	import vibe.http.server;
 	import vibe.core.stream;
+	import vibe.stream.memory;
 	import core.time;
 }
 
 /*
- * Stub of ConnectionStream to satisfy HTTPServerResponse
+ * Drops HTTP headers from the stream output and uses proper newlines
  */
-private final class NullConnStream : ConnectionStream {
-	/// InputStream
-	@property bool empty() { return true; }
-	@property ulong leastSize() { return 0; }
-	@property bool dataAvailableForRead() { return false; };
-	const(ubyte)[] peek() { return []; };
-	void read(ubyte[] dst) {};
-
-	/// OutputStream
-	void write(in ubyte[] bytes) {}
-	void flush() {}
-	void finalize() {}
-	void write(InputStream stream, ulong nbytes = 0) {};
-
-	// ConnectionStream
-	@property bool connected() const { return false; }
-	void close() {}
-	bool waitForData(Duration timeout = 0.seconds) { return false; }
-}
-
-/*
- * Stub of HTTPServerResponse to override bodyWriter
- */
-private final class DummyHTTPServerResponse : HTTPServerResponse {
-private:
-	AppenderOutputStream appender;
-
-public:
-	this() {
-		super(
-			new NullConnStream(),
-			new NullConnStream(),
-			null, null);
-		appender = new AppenderOutputStream();
-	}
-
-	override @property vibe.core.stream.OutputStream bodyWriter() {
-		return appender;
-	}
-
-	string rendered() {
-		return appender.data();
-	}
+private string rendered(MemoryOutputStream output)
+{
+	import std.string: split, join;
+	
+	string data = cast(string)output.data;
+	string[] lines = data.split("\r\n");
+	lines = lines[4 .. $];
+	
+	return lines.join("\n");
 }
 
 unittest {
-	auto resp = new DummyHTTPServerResponse();
+	auto output = new MemoryOutputStream();
+	auto resp = createTestHTTPServerResponse(output);
 	resp.renderTemple!`
 		Something here
 		<p>Something more here</p>
 		<%= "<p>Escape me!</p>" %>
 	`;
+	resp.bodyWriter.flush; //flushes resp's output stream wrapping the MemoryOutputStream
 
-	assert(isSameRender(resp.rendered, `
+	assert(isSameRender(output.rendered, `
 		Something here
 		<p>Something more here</p>
 		&lt;p&gt;Escape me!&lt;/p&gt;
@@ -82,10 +43,12 @@ unittest {
 }
 
 unittest {
-	auto resp = new DummyHTTPServerResponse();
+	auto output = new MemoryOutputStream();
+	auto resp = createTestHTTPServerResponse(output);
 	resp.renderTempleFile!"test12_vibe1.emd";
+	resp.bodyWriter.flush; //flushes resp's output stream wrapping the MemoryOutputStream
 
-	assert(isSameRender(resp.rendered, `
+	assert(isSameRender(output.rendered, `
 		Rendering with renderTempleFile in temple.vibe
 		<p>Don't escape</p>
 		&lt;p&gt;Do escape&lt;/p&gt;
@@ -93,10 +56,12 @@ unittest {
 }
 
 unittest {
-	auto resp = new DummyHTTPServerResponse();
+	auto output = new MemoryOutputStream();
+	auto resp = createTestHTTPServerResponse(output);
 	resp.renderTempleLayoutFile!("test13_vibelayout.emd", "test13_vibepartial.emd");
+	resp.bodyWriter.flush; //flushes resp's output stream wrapping the MemoryOutputStream
 
-	assert(isSameRender(resp.rendered, `
+	assert(isSameRender(output.rendered, `
 		&lt;div&gt;escaped header&lt;/div&gt;
 		<div>header div</div>
 		header
