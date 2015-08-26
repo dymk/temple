@@ -1,5 +1,7 @@
 module temple.tests.capture;
 
+version(TempleUnittest):
+
 import temple.tests.common;
 unittest
 {

@@ -9,6 +9,7 @@ private {
 	import vibe.http.server;
 	import vibe.textfilter.html;
 	import std.stdio;
+	import std.variant;
 }
 
 struct TempleHtmlFilter {
@@ -21,12 +22,20 @@ struct TempleHtmlFilter {
 		filterHTMLEscape(stream, unsafe);
 	}
 
+	static void temple_filter(ref TempleOutputStream stream, Variant variant) {
+		temple_filter(stream, variant.toString);
+	}
+
 	static string temple_filter(SafeString safe) {
 		return safe.payload;
 	}
 
 	static SafeString safe(string str) {
 		return SafeString(str);
+	}
+
+	static SafeString safe(Variant variant) {
+		return SafeString(variant.toString);
 	}
 }
 
@@ -50,7 +59,7 @@ void renderTemple(string temple, Ctx = TempleContext)
 {
 	mixin(SetupContext);
 
-	auto t = Temple!(temple, TempleHtmlFilter);
+	auto t = compile_temple!(temple, TempleHtmlFilter);
 	t.render(res.bodyWriter, context);
 }
 
