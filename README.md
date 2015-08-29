@@ -14,24 +14,28 @@ fine-grain filtering of generated text (e.g for escaping generated strings/safe 
 
 [Vibe.d](http://vibed.org/) compatible! See the [Vibe.d Usage](#vibed) section.
 
-Temple works with DMD 2.066 and later, and with an LDC >= `0.15-alpha1` (probably
-GDC as well, but it has not been tested).
+Temple works with 
+ - DMD >= `2.066`
+ - LDC >= `0.15-alpha1`
+ - GDC >= `4.9.2`
+
+And probably more, but that's what it's been officially tested with. 
 
 Table of Contents
 -----------------
 
  - [Usage](#usage)
- - [The Temple Syntax](#template-syntax)
+ - [The Temple Syntax](#the-temple-syntax)
  - [Contexts](#contexts)
- - [The `Temple` Function](#the-temple-template)
- - [The `TempleFile` Function](#the-templefile-template)
+ - [Compiling Templates](#using-compiledtemple)
+ - [Templates from Files](#compile_temple_file)
  - [Nested Templates](#nested-templates)
- - [Yielding, Layouts, and Partials](#yielding-layouts-and-partials)
+ - [Layouts and Yielding](#layouts-and-yielding)
  - [Capture Blocks](#capture-blocks)
  - [Helpers](#helpers-a-la-rails-view-helpers)
  - [Filters](#filters)
  - [TempleFilter](#templefilter)
- - [Vibe.d Usage](#vibed)
+ - [Vibe.d Usage](#vibed-integration)
  - [Example: Simple Webpages](#example-simple-webpages)
 
 Usage
