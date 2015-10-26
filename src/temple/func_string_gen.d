@@ -200,33 +200,11 @@ package string __temple_gen_temple_func_string(
 
 			if(oDelimPos.pos == 0)
 			{
-				if(oDelim.isShort())
-				{
-					if(!prev_temple_str.validBeforeShort())
-					{
-						// Chars before % weren't all whitespace, assume it's part of a
-						// string literal.
-						push_linenum();
-						push_string_literal(temple_str[0..oDelim.toString().length]);
-						prev_temple_str.munchHeadOf(temple_str, oDelim.toString().length);
-						continue;
-					}
-				}
-
 				// If we made it this far, we've got valid open/close delims
 				DelimPos!(CloseDelim)* cDelimPos = temple_str.nextDelim([cDelim]);
 				if(cDelimPos is null)
 				{
-					if(oDelim.isShort())
-					{
-						// don't require a short close delim at the end of the template
-						temple_str ~= cDelim.toString();
-						cDelimPos = enforce(temple_str.nextDelim([cDelim]));
-					}
-					else
-					{
-						assert(false, "Missing close delimer: " ~ cDelim.toString());
-					}
+					assert(false, "Missing close delimer: " ~ cDelim.toString());
 				}
 
 				// Made it this far, we've got the position of the close delimer.
@@ -268,11 +246,6 @@ package string __temple_gen_temple_func_string(
 					else
 					{
 						push_expr(inbetween_delims);
-
-						if(cDelim == CloseDelim.CloseShort)
-						{
-							push_stmt(`__temple_buff_filtered_put("\n");`);
-						}
 					}
 				}
 				else

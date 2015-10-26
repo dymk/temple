@@ -137,20 +137,20 @@ if(is(D : Delim))
 
 unittest
 {
-	const haystack = "% Я";
-	static assert(*(haystack.nextDelim([Delim.OpenShort])) ==
-		DelimPos!Delim(0, Delim.OpenShort));
+	const haystack = "<% Я";
+	static assert(*(haystack.nextDelim([Delim.Open])) ==
+		DelimPos!Delim(0, Delim.Open));
 }
 unittest
 {
 	const haystack = "Я";
-	static assert(haystack.nextDelim([Delim.OpenShort]) == null);
+	static assert(haystack.nextDelim([Delim.Open]) == null);
 }
 unittest
 {
-	const haystack = "Я%";
-	static assert(*(haystack.nextDelim([Delim.OpenShort])) ==
-		DelimPos!Delim(codeLength!char('Я'), Delim.OpenShort));
+	const haystack = "Я%>";
+	static assert(*(haystack.nextDelim([Delim.Close])) ==
+		DelimPos!Delim(codeLength!char('Я'), Delim.Close));
 }
 unittest
 {

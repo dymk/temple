@@ -103,38 +103,6 @@ unittest
 
 unittest
 {
-	// Test shorthand
-	const templ = `
-		% if(true) {
-			Hello!
-		% }
-	`;
-	auto render = compile_temple!(templ);
-	assert(isSameRender(render.toString, "Hello!"));
-}
-
-unittest
-{
-	// Test shorthand string eval
-	const templ = `
-		% if(true) {
-			%= "foo"
-		% }
-	`;
-	auto render = compile_temple!(templ);
-	//static assert(false);
-	assert(isSameRender(render.toString, "foo"));
-}
-unittest
-{
-	// Test shorthand only after newline
-	const templ = `foo%bar`;
-	auto render = compile_temple!(templ);
-	assert(render.toString == "foo%bar");
-}
-
-unittest
-{
 	// Ditto
 	auto render = compile_temple!`<%= "foo%bar" %>`;
 	assert(render.toString == "foo%bar");
@@ -262,11 +230,11 @@ unittest
 	// Test returning early from templates
 	auto render = compile_temple!`
 		one
-		% auto blah = true;
-		% if(blah) {
+		<% auto blah = true; %>
+		<% if(blah) { %>
 			two
-			%	return;
-		% }
+			<% return; %>
+		<% } %>
 		three
 	`;
 

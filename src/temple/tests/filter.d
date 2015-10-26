@@ -151,11 +151,11 @@ unittest
 		Ю ю	Ю ю	Yu	/ju/, /ʲu/
 		Я я	Я я	Ya	/ja/, /ʲa/
 
-		% if(true) {
+		<% if(true) { %>
 			А а	А а	A	/a/
 			Б б	Б б	Be	/b/
 			В в	В в	Ve	/v/
-		% }
+		<% } %>
 	`);
 
 	assert(isSameRender(render, `
