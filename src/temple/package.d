@@ -75,7 +75,7 @@ CompiledTemple compile_temple(
 
 	#line 1 "TempleFunc"
 	mixin(__TempleFuncStr);
-	#line 75 "src/temple/temple.d"
+	#line 78 "src/temple/temple.d"
 
 	static if(__TempleHasFP) {
 		alias temple_func = TempleFunc!__Filter;

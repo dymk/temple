@@ -55,7 +55,7 @@ package:
 	}
 
 public:
-	string capture(T...)(void delegate(T) block, T args)
+	string capture(T...)(scope void delegate(T) block, T args)
 	{
 		auto saved = this.sink;
 		scope(exit) this.sink = saved;

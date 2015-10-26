@@ -83,6 +83,24 @@ unittest
 			b, captured`));
 }
 
+unittest {
+	auto test = compile_temple!q{
+		<% int i = 0; %>
+		<% auto t = delegate() { %>
+			i is <%= i %>
+		<% }; %>
+
+		<% t(); %>
+		<% i = 1; %>
+		<% t(); %>
+	};
+
+	assert(isSameRender(test, `
+		i is 0
+		i is 1
+	`));
+}
+
 unittest
 {
 	auto test = compile_temple!q{

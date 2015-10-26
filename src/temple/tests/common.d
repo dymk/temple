@@ -260,7 +260,6 @@ unittest
 {
 	import temple.func_string_gen;
 	// Test returning early from templates
-	//auto str = `
 	auto render = compile_temple!`
 		one
 		% auto blah = true;
@@ -271,8 +270,12 @@ unittest
 		three
 	`;
 
-	//writeln(__temple_gen_temple_func_string(str, "Inline"));
 	assert(isSameRender(render.toString,
 		`one
 		two`));
+}
+
+unittest
+{
+	auto render = compile_temple_file!"test15_largefile.emd";
 }

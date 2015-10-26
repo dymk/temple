@@ -172,7 +172,7 @@ package string __temple_gen_temple_func_string(
 
 	// Keeps infinite loops from outright crashing the compiler
 	// The limit should be set to some arbitrary large number
-	uint safeswitch = 0;
+	int safeswitch = 0;
 
 	while(temple_str.length)
 	{
