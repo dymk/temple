@@ -245,5 +245,24 @@ unittest
 
 unittest
 {
+	// should cause travis to time out if temple func generator isn't
+	// sufficiently lean
 	auto render = compile_temple_file!"test15_largefile.emd";
+}
+
+unittest
+{
+	//Test emitting a literal <%= or <%
+	const templ = q{
+		print lit eval: <%= "<%=" %>
+		print lit stmt: <%= "<%" %>
+		print lit clos: %>
+	};
+
+	auto render = compile_temple!templ;
+	assert(render.toString == q{
+		print lit eval: <%=
+		print lit stmt: <%
+		print lit clos: %>
+	});
 }

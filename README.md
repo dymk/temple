@@ -51,9 +51,7 @@ The Temple Syntax
 The template syntax is based off of that of [eRuby](https://en.wikipedia.org/wiki/ERuby) (but can be changed by modifying `temple/delims.d`).
 D statements go between `<% %>` delimers. If you wish to capture the result of a D expression, place it between `<%= %>` delimers, and it will be converted to a `string` using std.conv's `to`.
 
-Shorthand delimers are also supported: A line beginning with `%` is considered a statement and executed; a line beginning with `%=` is evaluated and the result is written to the output stream.
-
-> Note that expressions within `<%= %>` and `%=` should _not_ end with a semicolon, while statements within `<% %>` and `%` should.
+> Note that expressions within `<%= %>` should _not_ end with a semicolon, while statements within `<% %>` should.
 
 ####Quick Reference:
 
@@ -62,26 +60,14 @@ Shorthand delimers are also supported: A line beginning with `%` is considered a
 | `foo` | `foo`  |
 | `<% "foo"; %>`  | `<no output>` |
 | `<%= "foo" %>` | `foo`  |
-| `%= "foo" ~ " " ~ "bar"` | `foo bar` |
-| `% "foo";` | `<no output>` |
+| `<%= "<%=" %>` | `<%=`  |
+| `<%= "<%" %>` | `<%`  |
+| `%>` | `%>`  |
 
 ###### Foreach
 ```d
-% foreach(i; 0..3) {
-	Index: <%= i %>
-% }
-```
-```
-Index: 0
-Index: 1
-Index: 2
-```
-
-###### Foreach, alt
-```d
-% import std.conv;
 <% foreach(i; 0..3) { %>
-	%= "Index: " ~ to!string(i)
+	Index: <%= i %>
 <% } %>
 ```
 ```
@@ -92,14 +78,14 @@ Index: 2
 
 ###### If/else if/else statements
 ```d
-% auto a = "bar";
-% if(a == "foo") {
+<% auto a = "bar"; %>
+<% if(a == "foo") { %>
 	Foo!
-% } else if(a == "bar") {
+<% } else if(a == "bar") { %>
 	Bar!
-% } else {
+<% } else { %>
 	Baz!
-% }
+<% } %>
 ```
 ```
 Bar!
@@ -136,11 +122,11 @@ Passed to:
 Hello, <%= var("name") %>
 
 <% /* Conversion of a Variant to a bool */ %>
-% if(var("should_bort").get!bool) {
+<% if(var("should_bort").get!bool) { %>
 	Yep, gonna bort
-% } else {
+<% } else { %>
 	Nope, not gonna bort
-% }
+<% } %>
 
 <% /* Variants are returned by reference, and can be (re)assigned */ %>
 <% var("written_in") = "D" %>
@@ -670,9 +656,9 @@ void main()
 		<title>dymk's awesome website</title>
 	</head>
 	<body>
-		%= render!"common/_sidebar.html.emd"()
-		%= yield
-		%= render!"common/_footer.html.emd"()
+		<%= render!"common/_sidebar.html.emd"() %>
+		<%= yield %>
+		<%= render!"common/_footer.html.emd"() %>
 	</body>
 </html>
 ```
