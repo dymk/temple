@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Главная | Язык программирования D</title>
+        <link href="favicon.png" type="image/png" rel="icon">
+        <link href="favicon.png" type="image/png" rel="shortcut icon">
+        <link href='https://fonts.googleapis.com/css?family=Arimo&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+        <link rel="stylesheet" href="assets/css/normalize.css">
+        <link rel="stylesheet" href="assets/css/pure-min.css">
+        <link rel="stylesheet" href="assets/css/grids-responsive-min.css">
+        <link rel="stylesheet" href="assets/css/style.css">
+        <link rel="stylesheet" href="assets/css/mono-blue.css">
+        <script src='https://www.google.com/recaptcha/api.js'></script>
+        <script src="assets/js/highlight.pack.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script>
+    </head>
+
+    <body>
+        <aside>
+            <header>
+                <h1 class="site-title"><a href="[[++site_url]]"><span>D</span>programming</a></h1>
+                <h2 class="site-description">Сайт о языке программирования D</h2>
+
+                <nav>
+                    <ul>
+                        <li class="first active"><a href="http://dprogramming.ru/" title="Главная" >Главная</a></li>
+                        <li><a href="news/" title="Новости" >Новости</a></li>
+                        <li><a href="articles/" title="Статьи" >Статьи</a></li>
+                        <li><a href="http://dlanguage.ru/" title="Форум" >Форум</a></li>
+                        <li class="last"><a href="about.html" title="О сайте" >О сайте</a></li>
+                    </ul>
+                </nav>
+
+                <h3>Последние новости</h3>
+                <ul class="latest-posts">
+                </ul>
+
+                <h3>Последние статьи</h3>
+                <ul class="latest-posts">
+                </ul>
+            </header>
+        </aside>
+
+        <main>
+        <section class="post main">
+            <header class="post-header">
+                <h2 class="post-title"><%= var.pagetitle %></h2>
+            </header>
+
+            <div class="post-description">
+                <div class="pure-g start">
+                    <div class="pure-u-1-3">
+                        <h3>Основное</h3>
+
+                        <ul>
+                            <li><a href="http://dlang.org"><img class="icon" src="assets/images/dlang-icon.jpg">dlang.org</a></li>
+                            <li><a href="http://dlang.org/dmd-windows.html">DMD</a> - "эталонный" компилятор.</li>
+                            <li><a href="http://gdcproject.org/">GDC</a> - компилятор на основе GCC</li>
+                            <li><a href="http://wiki.dlang.org/LDC">LDC</a> - компилятор на основе LLVM</li>
+                            <li><a href="https://github.com/SDC-Developers/SDC">SDC</a> - экспериментальный компилятор</li>
+                            <li><a href="http://code.dlang.org/"><img class="icon" src="assets/images/dub-icon.png">DUB - официальный менеджер пакетов</a></li>
+                            <li><a href="http://dlang.org/dstyle.html">Стиль кода</a></li>
+                            <li><a href="http://dlang.org/bugstats.php">Багтрекер</a></li>
+                            <li><a href="https://github.com/D-Programming-Language"><img class="icon" src="assets/images/github-icon.png">GitHub</a></li>
+                            <li><a href="https://ru.wikipedia.org/wiki/D_%28%D1%8F%D0%B7%D1%8B%D0%BA_%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F%29"><img class="icon" src="assets/images/wiki-icon.png">D в русскоязычной Википедии</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="pure-u-1-3">
+                        <h3>Документация</h3>
+                        <ul>
+                            <li><a href="http://dlang.org/spec.html">Спецификация языка</a></li>
+                            <li><a href="http://dlang.org/phobos/index.html">Phobos - стандартная библиотека</a></li>
+                            <li><a href="http://wiki.dlang.org/"><img class="icon" src="assets/images/wiki-icon.png">Официальная вики</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="pure-u-1-3">
+                        <h3>Онлайн-сообщества</h3>
+
+                        <ul>
+                            <li><a href="http://forum.dlang.org/"><img class="icon" src="assets/images/dlang-icon.jpg">[en] Официальный форум</a></li>
+                            <li><a href="http://planet.dsource.org/">[en] Planet D</a> - Агрегатор англоязычных блогов</li>
+                            <li><a href="http://arsdnet.net/this-week-in-d/">[en] This week in D</a> - еженедельный дайджест</li>
+                            <li><a href="https://trello.com/b/XoFjxiqG/active"><img class="icon" src="assets/images/trello-icon.png">D в Trello</a></li>
+                            <li><a href="http://dlanguage.ru/"><img class="icon" src="assets/images/dlanguage-icon.gif">dlanguage.ru</a> - русскоязычный форум</li>
+                            <li><a href="http://dlang.ru">dlang.ru</a> - русскоязычное сообщество (under construction)</li>
+                            <li><a href="https://vk.com/vk_dlang"><img class="icon" src="assets/images/vk-icon.png">Группа вКонтакте</a></li>
+                            <li><a href="https://www.facebook.com/dlang.org"><img class="icon" src="assets/images/facebook-icon.png">[en] Страница на Facebook</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="pure-g start">
+                    <div class="pure-u-1-3">
+                        <h3>Инструменты и утилиты</h3>
+                        <ul>
+                            <li><a href="http://dlang.org/rdmd.html">rdmd</a> - утилита ускорения сборки</li>
+                            <li><a href="https://github.com/Hackerpilot/Dscanner">Dscanner</a> - анализатор и линтер (<a href="http://dprogramming.ru/articles/dscanner-overview.html">+статья</a>)</li>
+                            <li><a href="https://github.com/Hackerpilot/dfmt">dfmt</a> - форматтер кода</li>
+                            <li><a href="https://github.com/Hackerpilot/dfix">dfix</a> - обновление deprecated-кода</li>
+                            <li><a href="http://dlang.org/htod.html">htod</a> - конвертер заголовочных файлов C в D</li>
+                        </ul>
+                    </div>
+
+                    <div class="pure-u-1-3">
+                        <h3>Онлайн-инструменты</h3>
+                        <ul>
+                            <li><a href="http://dpaste.dzfl.pl/">DPaste</a> - выполнение D-кода в браузере</li>
+                            <li><a href="http://asm.dlang.org/">asm.dlang.org</a> - онлайн-компилятор и дизассемблер</li>
+                        </ul>
+                    </div>
+
+                    <div class="pure-u-1-3">
+                        <h3>Книги и туториалы</h3>
+                        <ul>
+                            <li><a href="http://ddili.org/ders/d.en/">[en] Programming in D</a> - бесплатная олайн-книга</li>
+                            <li><a href="http://qznc.github.io/d-tut/">[en] Pragmatic D tutorial</a></li>
+                            <li><a href="http://www.pluralsight.com/courses/introduction-to-d">[en] Introduction to D</a> - видеокурс на Pluralsight</li>
+                            <li><a href="http://d.readthedocs.org/en/latest/">[en] Quick start with D</a> на readthedocs.org</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        </main>
+    </body>
+</html>
