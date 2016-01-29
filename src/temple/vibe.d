@@ -8,6 +8,7 @@ private {
 	import temple;
 	import vibe.http.server;
 	import vibe.textfilter.html;
+	import vibe.utils.dictionarylist;
 	import std.stdio;
 	import std.variant;
 }
@@ -86,9 +87,13 @@ void renderTempleLayoutFile(string layout_file, string partial_file, Ctx = Templ
 }
 
 private void copyContextParams(ref TempleContext ctx, ref HTTPServerRequest req) {
-
-	if(!req || !(req.params))
-		return;
+	static if(is(typeof(req.params) == string[string])) {
+		if(!req || !(req.params))
+			return;
+	} else if(is(typeof(req.params) == DictionaryList!(string, true, 32))) {
+		if(!req || req.params.length < 1)
+			return;
+	}
 
 	foreach(key, val; req.params) {
 		ctx[key] = val;
