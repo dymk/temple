@@ -420,7 +420,8 @@ string build_function_head(string filter_ident) {
 		ret ~= `
 	void __temple_buff_filtered_put(T)(T thing)
 	{
-		__temple_context.put(.std.conv.to!string(thing));
+		import std.conv : to;
+		__temple_context.put(to!string(thing));
 	}
 
 	/// without filter, render subtemplate with an explicit context (which defaults to null)
