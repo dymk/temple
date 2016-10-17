@@ -26,6 +26,7 @@ private import
 private import std.array : appender, Appender;
 private import std.range : isOutputRange;
 private import std.typecons : scoped;
+private import std.stdio : File;
 
 public {
     import temple.temple_context : TempleContext;
@@ -165,7 +166,7 @@ public:
     void render(void function(string) sink, TempleContext tc = null) const {
     	auto oc = TempleOutputStream(sink);
     	this.render(oc, tc); }
-    void render(ref std.stdio.File f, TempleContext tc = null) const {
+    void render(ref File f, TempleContext tc = null) const {
         auto oc = TempleOutputStream(f);
         this.render(oc, tc);
     }

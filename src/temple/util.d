@@ -82,7 +82,7 @@ unittest
 DelimPos!(D)* nextDelim(D)(string haystack, const(D)[] delims)
 if(is(D : Delim))
 {
-	alias Tuple!(Delim, "delim", string, "str") DelimStrPair;
+	struct DelimStrPair { Delim delim; string str; }
 
 	/// The foreach is there to get around some DMD bugs
 	/// Preferrably, one of the next two lines would be used instead
