@@ -1,6 +1,6 @@
 Temple [![Build Status](https://travis-ci.org/dymk/temple.png?branch=master)](https://travis-ci.org/dymk/temple)
 ======
-Surprisingly Flexable, Compile Time, Zero Overhead, Embedded Template Engine for D
+Surprisingly Flexible, Compile Time, Zero Overhead, Embedded Template Engine for D
 
 About
 -----
@@ -14,12 +14,12 @@ fine-grain filtering of generated text (e.g for escaping generated strings/safe 
 
 [Vibe.d](http://vibed.org/) compatible! See the [Vibe.d Usage](#vibed) section.
 
-Temple works with 
+Temple works with
  - DMD >= `2.066`
  - LDC >= `0.15-alpha1`
  - GDC >= `4.9.2`
 
-And probably more, but that's what it's been officially tested with. 
+And probably more, but that's what it's been officially tested with.
 
 Table of Contents
 -----------------
@@ -126,7 +126,7 @@ Contexts
 The `TempleContext` type is used to pass variables to templates. The struct responds to
 `opDispatch`, and returns variables in the `Variant` type. Use `Variant#get` to
 convert the variable to its intended type. `TemplateContext#var(string)` is used
-to retrieve variables in the context, and can be called direty with `var` in the
+to retrieve variables in the context, and can be called directly with `var` in the
 template:
 
 ```d
@@ -279,7 +279,7 @@ Nested Templates
 
 `#render` can be called within templates to nest templates. By default,
 the current context is passed to the nested template, and any filters applied to the nester
-are applied to the neste. A different context can be passed explicitly by calling
+are applied to the nestee. A different context can be passed explicitly by calling
 `#render_with(TemplateContext)` instead.
 
 `a.emd`
@@ -434,7 +434,7 @@ Renders:
 Filters
 -------
 
-Filters are a way to filter and transform the dyanmic parts of the template, before
+Filters are a way to filter and transform the dynamic parts of the template, before
 it is written to the output buffer.
 A filter takes the form of a `struct` or `class` that defines various overloads of the static
 method `temple_filter`. The `temple_filter` methods can either:
@@ -514,7 +514,7 @@ foo (filtered):   !mark me!
 foo (unfiltered): don't mark me
 ```
 
-Filters are propogated to nested templates:
+Filters are propagated to nested templates:
 
 `a.emd`:
 ```d
@@ -617,7 +617,7 @@ And hello, foo!
 
 ---
 
-Dynamic content is passed through Vibe's HTML filter before being renderd, unless it is
+Dynamic content is passed through Vibe's HTML filter before being rendered, unless it is
 marked as safe, by calling `safe("your string")`.
 
 ```d
