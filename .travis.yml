@@ -6,9 +6,18 @@ d:
   - ldc
   - gdc
 
+env:
+  - CONFIG=unittest
+  - CONFIG=unittest-vibed
+
+matrix:
+  allow_failures:
+  - d: gdc
+    env: CONFIG=unittest-vibed
+
 install:
   - $DC | head -3
 
 script:
   - export PATH=$PATH:~/bin/
-  - dub --build=unittest --config=unittest --compiler=$DC -v
+  - dub --build=unittest --config=$CONFIG --compiler=$DC -v
