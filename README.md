@@ -59,7 +59,7 @@ Shorthand delimers are also supported: A line beginning with `%` is considered a
 
 > Note that expressions within `<%= %>` and `%=` should _not_ end with a semicolon, while statements within `<% %>` and `%` should.
 
-####Quick Reference:
+#### Quick Reference:
 
 | Input | Output |
 | ----- | ------ |
@@ -191,7 +191,7 @@ Using CompiledTemple
 Both `compile_temple!"template string"` and `compile_temple_file!"filename"` return a `CompiledTemple`.
 The `CompiledTemple` exposes two rendering methods, `toString`, and `render`, both of which take an optional `TemplateContext`.
 
-#####`string CompiledTemple#toString(TempleContext = null)`
+##### `string CompiledTemple#toString(TempleContext = null)`
 -------
 Evaluates the template and returns the resulting string
 ```d
@@ -222,7 +222,7 @@ void main()
 }
 ```
 
-#####`void CompiledTemple#render(Sink, TempleContext = null)`
+##### `void CompiledTemple#render(Sink, TempleContext = null)`
 -----
 Incrementally evaluates the template into Sink, which can be one of the following:
  - an `std.stdio.File`
